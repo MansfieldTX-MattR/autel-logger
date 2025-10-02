@@ -1,0 +1,28 @@
+[project]
+name = "autel-logger"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Matthew Reid", email = "matt@nomadic-recording.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.3.0",
+    "loguru>=0.7.3",
+    "platformdirs>=4.4.0",
+]
+
+[project.scripts]
+autel-logger = "autel_logger.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "clipboard>=0.0.4",
+    "fake-bpy-module-latest>=20250926",
+    "ipython>=9.5.0",
+]
