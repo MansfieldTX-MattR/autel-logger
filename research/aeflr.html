@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+    <title>Autel Explorer Flight Logs Reader</title>
+<head>
+    <meta http-equiv=Content-Type content="text/html;charset=UTF-8">
+    <link rel="icon" href="data:image/png;base64,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"/>
+    <style type="text/css">
+        body{font-family: Arial, Helvetica; font-size:10pt}
+        .au{color:#ffffff;background-color:#F02626;}
+        thead{font-weight:bold}
+        td.pn{font-weight:bolder;font-style:italic;color:#800000}
+        info{color:#008000;font-size:8pt}
+        p.note{color:#FF0000;font-size:10pt}
+        td {vertical-align:top;}
+    </style>
+    <script>
+        var isLE = true;
+        var logvers = [
+        {
+            head:{keys:["aircraftSn","batterySn","locationName","droneType","distance","flightTime","maxAltitude","videoTime","flightAt","timeZone","startFlyLatitude","startFlyLongitude","imageCount","videoCount","firmwareSize","firmwareInfo"],dict:{aircraftSn:18,batterySn:32,locationName:64,droneType:1,distance:4,flightTime:4,maxAltitude:4,videoTime:4,flightAt:8,timeZone:4,startFlyLatitude:4,startFlyLongitude:4,imageCount:2,videoCount:2,firmwareSize:2,firmwareInfo:0}},
+            inbase:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","param1","param2"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,param1:4,param2:4}},
+            infull:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","flightMode","cameraMode","rcRSSI","mMode","droneWarning","droneExtWarning","gimbalWarning","timeLeft","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","maxError","param1","param2","param3","param4","param5"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,flightMode:1,cameraMode:1,rcRSSI:1,mMode:1,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4}},
+            video:{keys:["videoName","recordAt","latitude","longitude","Duration"],dict:{videoName:64,recordAt:8,latitude:4,longitude:4,Duration:4}},
+            image:{keys:["imageName","shootAt","latitude","longitude"],dict:{imageName:64,shootAt:8,latitude:4,longitude:4}},
+            outbase:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","param1","param2"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,param1:4,param2:4}},
+            outfull:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","flightMode","cameraMode","gpsSignalLevel","rcRSSI","mMode","homeLatitude","homeLongitude","distanceFromHome","currentJourney","droneWarning","droneExtWarning","gimbalWarning","timeLeft","backTime","satelliteCount","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","maxError","param1","param2","param3","param4","param5"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,flightMode:1,cameraMode:1,gpsSignalLevel:1,rcRSSI:1,mMode:1,homeLatitude:4,homeLongitude:4,distanceFromHome:4,currentJourney:4,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,backTime:4,satelliteCount:1,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4}}
+        },
+        {
+            head:{keys:["aircraftSn","batterySn","locationName","droneType","distance","flightTime","maxAltitude","videoTime","flightAt","timeZone","startFlyLatitude","startFlyLongitude","imageCount","videoCount","firmwareSize","firmwareInfo"],dict:{aircraftSn:18,batterySn:32,locationName:64,droneType:1,distance:4,flightTime:4,maxAltitude:4,videoTime:4,flightAt:8,timeZone:4,startFlyLatitude:4,startFlyLongitude:4,imageCount:2,videoCount:2,firmwareSize:2,firmwareInfo:0}},
+            inbase:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","param1","param2","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,param1:4,param2:4,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4}},
+            infull:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","flightMode","cameraMode","rcRSSI","mMode","droneWarning","droneExtWarning","gimbalWarning","timeLeft","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","maxError","param1","param2","param3","param4","param5","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","visionWarning","visionExtWarning","visionErrorCode","maxFlightAltitude","goHomeAltitude","beginnerModeEnable","lowBatteryWarningThreshold","seriousBatteryWarningThreshold","maxFlightRadius","maxFlightHorizontalSpeed","obstacleAvoidanceEnable","radarEnable"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,flightMode:1,cameraMode:1,rcRSSI:1,mMode:1,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,visionWarning:4,visionExtWarning:4,visionErrorCode:4,maxFlightAltitude:4,goHomeAltitude:4,beginnerModeEnable:1,lowBatteryWarningThreshold:1,seriousBatteryWarningThreshold:1,maxFlightRadius:4,maxFlightHorizontalSpeed:4,obstacleAvoidanceEnable:1,radarEnable:1}},
+            video:{keys:["videoName","recordAt","latitude","longitude","Duration"],dict:{videoName:64,recordAt:8,latitude:4,longitude:4,Duration:4}},
+            image:{keys:["imageName","shootAt","latitude","longitude"],dict:{imageName:64,shootAt:8,latitude:4,longitude:4}},
+            outbase:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","param1","param2","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,param1:4,param2:4,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4}},
+            outfull:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","flightMode","cameraMode","gpsSignalLevel","rcRSSI","mMode","homeLatitude","homeLongitude","distanceFromHome","currentJourney","droneWarning","droneExtWarning","gimbalWarning","timeLeft","backTime","satelliteCount","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","maxError","param1","param2","param3","param4","param5","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","visionWarning","visionExtWarning","visionErrorCode","maxFlightAltitude","goHomeAltitude","beginnerModeEnable","lowBatteryWarningThreshold","seriousBatteryWarningThreshold","maxFlightRadius","maxFlightHorizontalSpeed","obstacleAvoidanceEnable","radarEnable"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,flightMode:1,cameraMode:1,gpsSignalLevel:1,rcRSSI:1,mMode:1,homeLatitude:4,homeLongitude:4,distanceFromHome:4,currentJourney:4,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,backTime:4,satelliteCount:1,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4,visionWarning:4,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,visionExtWarning:4,visionErrorCode:4,maxFlightAltitude:4,goHomeAltitude:4,beginnerModeEnable:1,lowBatteryWarningThreshold:1,seriousBatteryWarningThreshold:1,maxFlightRadius:4,maxFlightHorizontalSpeed:4,obstacleAvoidanceEnable:1,radarEnable:1}}
+        },
+        {
+            head:{keys:["aircraftSn","batterySn","locationName","droneType","distance","flightTime","maxAltitude","videoTime","flightAt","timeZone","startFlyLatitude","startFlyLongitude","imageCount","videoCount","firmwareSize","firmwareInfo"],dict:{aircraftSn:18,batterySn:32,locationName:64,droneType:1,distance:4,flightTime:4,maxAltitude:4,videoTime:4,flightAt:8,timeZone:4,startFlyLatitude:4,startFlyLongitude:4,imageCount:2,videoCount:2,firmwareSize:2,firmwareInfo:0}},
+            inbase:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","param1","param2"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,param1:4,param2:4}},
+            infull:{keys:["curTime","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","flightMode","cameraMode","rcRSSI","mMode","droneWarning","droneExtWarning","gimbalWarning","timeLeft","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","visionWarning","visionExtWarning","visionErrorCode","maxFlightAltitude","goHomeAltitude","beginnerModeEnable","lowBatteryWarningThreshold","seriousBatteryWarningThreshold","maxFlightRadius","maxFlightHorizontalSpeed","obstacleAvoidanceEnable","radarEnable","maxError","param1","param2","param3","param4","param5"],dict:{curTime:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,flightMode:1,cameraMode:1,rcRSSI:1,mMode:1,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,visionWarning:4,visionExtWarning:4,visionErrorCode:4,maxFlightAltitude:4,goHomeAltitude:4,beginnerModeEnable:1,lowBatteryWarningThreshold:1,seriousBatteryWarningThreshold:1,maxFlightRadius:4,maxFlightHorizontalSpeed:4,obstacleAvoidanceEnable:1,radarEnable:1,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4}},
+            video:{keys:["videoName","recordAt","latitude","longitude","Duration"],dict:{videoName:64,recordAt:8,latitude:4,longitude:4,Duration:4}},
+            image:{keys:["imageName","shootAt","latitude","longitude"],dict:{imageName:64,shootAt:8,latitude:4,longitude:4}},
+            outbase:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","param1","param2"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,param1:4,param2:4}},
+            outfull:{keys:["curTime","droneLatitude","droneLongitude","altitude","xSpeed","ySpeed","zSpeed","gimbalPitch","gimbalRoll","gimbalYaw","dronePitch","droneRoll","droneYaw","mLeftHorizontal","mLeftVertical","mRightHorizontal","mRightVertical","rcModeState","offlineDuration","rcButtonState","phoneHeading","radarInfoTimeStamp","frontRadarInfo","rearRadarInfo","leftRadarInfo","rightRadarInfo","topRadarInfo","bottomRadarInfo","flightMode","cameraMode","gpsSignalLevel","rcRSSI","mMode","homeLatitude","homeLongitude","distanceFromHome","currentJourney","droneWarning","droneExtWarning","gimbalWarning","timeLeft","backTime","satelliteCount","designedVolume","fullChargeVolume","currentElectricity","currentVoltage","currentCurrent","remainPowerPercent","batteryTemperature","batteryState","numberOfDischarge","cellCount","voltageOfCells","visionWarning","visionExtWarning","visionErrorCode","maxFlightAltitude","goHomeAltitude","beginnerModeEnable","lowBatteryWarningThreshold","seriousBatteryWarningThreshold","maxFlightRadius","maxFlightHorizontalSpeed","obstacleAvoidanceEnable","radarEnable","maxError","param1","param2","param3","param4","param5"],dict:{curTime:4,droneLatitude:4,droneLongitude:4,altitude:4,xSpeed:4,ySpeed:4,zSpeed:4,gimbalPitch:4,gimbalRoll:4,gimbalYaw:4,dronePitch:4,droneRoll:4,droneYaw:4,mLeftHorizontal:2,mLeftVertical:2,mRightHorizontal:2,mRightVertical:2,rcModeState:1,offlineDuration:4,rcButtonState:1,phoneHeading:8,radarInfoTimeStamp:8,frontRadarInfo:4,rearRadarInfo:4,leftRadarInfo:4,rightRadarInfo:4,topRadarInfo:4,bottomRadarInfo:4,flightMode:1,cameraMode:1,gpsSignalLevel:1,rcRSSI:1,mMode:1,homeLatitude:4,homeLongitude:4,distanceFromHome:4,currentJourney:4,droneWarning:4,droneExtWarning:4,gimbalWarning:4,timeLeft:4,backTime:4,satelliteCount:1,designedVolume:4,fullChargeVolume:4,currentElectricity:4,currentVoltage:4,currentCurrent:4,remainPowerPercent:1,batteryTemperature:4,batteryState:1,numberOfDischarge:4,cellCount:1,voltageOfCells:32,visionWarning:4,visionExtWarning:4,visionErrorCode:4,maxFlightAltitude:4,goHomeAltitude:4,beginnerModeEnable:1,lowBatteryWarningThreshold:1,seriousBatteryWarningThreshold:1,maxFlightRadius:4,maxFlightHorizontalSpeed:4,obstacleAvoidanceEnable:1,radarEnable:1,maxError:4,param1:4,param2:4,param3:4,param4:4,param5:4}}
+        }
+            ];
+        var recTypes = [{name:"outfull", size:0, count: 0}, {name:"outbase", size:0, count: 0}, {name:"infull", size:0, count: 0}, {name:"inbase", size:0, count: 0}, null,null,null,null,null,null,null,null,null,null,{name:"image", size:0, count: 0},{name:"video", size:0, count: 0}];
+        var ndTypes = {flightTime:"i", timeZone:"i", videoTime:"i", curTime:"i", Duration:"i", offLineDuration:"i", phoneHeading:"d", radarInfoTimeStamp:"d", backTime:"i", designedVolume:"i", droneExtWarning:"h", droneWarning:"h", curTime:"i", fullChargeVolume:"i", gimbalWarning:"h", maxError:"i", numberOfDischarge:"i", timeLeft:"i", visionErrorCode:"i", visionExtWarning:"h", visionWarning:"h", voltageOfCells:"[f"};
+        var ver, fmt, ba, dv;
+
+        var headerData = null;
+        var flightData = null;
+        var mediaData = null;
+        var fileCount = 0;
+        var lastState = 0;
+        var lastIDX = 0;
+        var lastChecked = 0;
+        var strings = {
+            "counts": [],
+            "ru":[],
+            "en":[]
+            //add your translation here :)
+        }
+        function getUint64(dataview, byteOffset, littleEndian) {
+          // split 64-bit number into two 32-bit (4-byte) parts
+          const left =  dataview.getUint32(byteOffset, littleEndian);
+          const right = dataview.getUint32(byteOffset + 4, littleEndian);
+          const combined = littleEndian? left + 2**32*right : 2**32*left + right;
+          if (!Number.isSafeInteger(combined))
+            console.warn(combined, 'exceeds MAX_SAFE_INTEGER. Precision may be lost');
+          return combined;
+        }
+
+        function hex(i, minlen)
+        {
+            s = i.toString(16);
+            while (s.length < minlen)
+                s = "0" + s;
+            return s;
+        }
+        function float2hex(v)
+        {
+            var _dv = new DataView(new ArrayBuffer(4));
+            _dv.setFloat32(0, v);
+            return "0x" + hex(_dv.getUint8(0), 2) + hex(_dv.getUint8(1), 2) + hex(_dv.getUint8(2), 2) + hex(_dv.getUint8(3), 2);
+        }
+
+        function update()
+        {
+            var els = ["header", "fitems", "media"];
+            var nlists = [headerData, flightData, mediaData];
+            var nstate = 0;
+            var checked = -1;
+            var firstAvailable = -1;
+            for (i = 0; i < els.length; i++)
+            {
+                el = document.getElementById(els[i]);
+                rel = document.getElementById("rad_" + els[i]);
+                if (nlists[i])
+                {
+                    el.style.display = "inline";
+                    nstate |= (1 << i);
+                    if (rel.checked)
+                        checked = i;
+                    if (firstAvailable)
+                        firstAvailable = i;
+                }
+                else
+                    el.style.display = "none";
+            }
+            //
+            var output = document.getElementById("output");
+            if (checked < 0)
+            {
+                if (firstAvailable < 0)
+                {
+                    output.innerHTML = "";
+                    return;
+                }
+                document.getElementById("rad_" + els[firstAvailable]).checked = true;
+                checked = firstAvailable;
+            }
+            var slider = document.getElementById("idx_slider");
+            var idx = Number(slider.value);
+
+            if ((nstate == lastState) && (checked == lastChecked) && (idx == lastIDX))
+                return;
+            var isFullRecords = recTypes[0].count > 0;
+            document.getElementById("export").style.display = isFullRecords?"inline":"none";
+            document.getElementById("noexport").style.display = isFullRecords?"none":"inline";
+            document.getElementById("controls").style.display = (checked == 1)?"block":"none";
+            if (checked == 0)
+            {
+                var names = headerData.model.keys.filter(function(e){return e.indexOf("firmware")<0;});
+                m = {keys:names, dict: headerData.model.dict};
+                var table1 = makeTable2(headerData, m, 3, 0);
+                //build components table
+                var keys = [];
+                var objs = [];
+                var a = headerData.firmwareInfo.substring(2, headerData.firmwareInfo.length-2).split("},{");
+                for (var i = 0; i < a.length; i++)
+                {
+                    var aa = a[i].substring(1, a[i].length - 1).split('","');
+                    var obj = {};
+                    for (var j = 0; j < aa.length; j++)
+                    {
+                        var nv = aa[j].split('":"');
+                        if (i == 0)
+                            keys.push(nv[0]);
+                        obj[nv[0]] = nv[1];
+                    }
+                    objs.push(obj);
+                }
+                var s = '<table border="1" cellpadding="1" cellspacing="0"><thead><tr>';
+                for (var i = 0; i < keys.length; i++)
+                    s += '<td>' + keys[i] + '</td>';
+                s += '</thead><tbody>';
+                for (var i = 0; i < objs.length; i++)
+                {
+                    s += '<tr>';
+                    for (var j = 0; j < keys.length; j++)
+                        s += '<td>' + objs[i][keys[j]] + '</td>';
+                    s += '</tr>';
+                }
+                s += '</tbody></table>';
+
+                output.innerHTML = table1 + "<br/>" + s;
+            }
+            else if (checked == 2)
+            {
+                var s = "";
+                for (var rt = 14; rt < 16; rt++)
+                {
+                    if (recTypes[rt].count > 0)
+                    {
+                        var m = fmt[recTypes[rt].name];
+                        s += '<table border="1" cellpadding="1" cellspacing="0"><thead><tr>';
+                        for (var i = 0; i < m.keys.length; i++)
+                            s += '<td>' + m.keys[i] + '</td>';
+                        s += '</thead><tbody>';
+                        for (var i = 0; i < mediaData.length; i++)
+                        {
+                            if (dv.getUint8(mediaData[i]) != rt)
+                                continue;
+                            var obj = readRecord({offset: mediaData[i] + 1, model: m});
+                            s += '<tr>';
+                            for (var j = 0; j < m.keys.length; j++)
+                            {
+                                var n = m.keys[j];
+                                var v = obj[n];
+                                if ((m.dict[n] == 8) && !ndTypes[n])
+                                {
+                                    d = new Date();
+                                    d.setTime(Number(v));
+                                    v = "" + d.toLocaleTimeString();
+                                }
+                                s += '<td>' + v + '</td>';
+                            }
+                            s += '</tr>';
+                        }
+                        s += '</tbody></table><br/>';
+                    }
+                }
+                output.innerHTML = s;
+            }
+            else if (checked == 1)
+            {
+                lastIDX = idx;
+                //check current record
+                var updateIDX = -1;
+                var curIDX = idx;
+                var curRT = dv.getUint8(flightData[curIDX]);
+                if ((curRT != 0) && (curRT != 2))
+                {
+                    //search last full record
+                    updateIDX = curIDX - 1;
+                    while (updateIDX >= 0)
+                    {
+                        var prevRT = dv.getUint8(flightData[updateIDX]);
+                        if ((prevRT == 0) || (prevRT == 2))
+                            break;
+                        updateIDX--;
+                    }
+                    if (updateIDX >= 0)
+                    {
+                        curIDX = updateIDX;
+                        updateIDX = idx;
+                    }
+                }
+                //read main record
+                info = {offset: flightData[curIDX] + 1, model: fmt[recTypes[dv.getUint8(flightData[curIDX])].name]};
+                var rec = readRecord(info);
+                //read record update
+                if (updateIDX >= 0)
+                {
+                    info.offset = flightData[updateIDX] + 1;
+                    info.model = fmt[recTypes[dv.getUint8(flightData[updateIDX])].name];
+                    readRecord(info, rec);
+                }
+                document.getElementById("idx").innerHTML = (idx + 1) + ' of ' + (Number(slider.max) + 1);
+                output.innerHTML = makeTable2(rec, fmt["outfull"], 3, 0);
+                //output.innerHTML = makeTable2(rec, fmt[recTypes[dv.getUint8(flightData[idx])].name], 3, 0);
+            }
+            lastState = nstate;
+            lastChecked = checked;
+        }
+
+        //
+        var textFile = null,
+        makeTextFile = function (text) {
+          var data = new Blob([text], {type: 'text/plain'});
+          if (textFile !== null)
+            window.URL.revokeObjectURL(textFile);
+          textFile = window.URL.createObjectURL(data);
+          return textFile;
+        };
+
+        function readRecord(info, o)
+        {
+            var key, size;
+            var offset = info.offset;
+            if (!o)
+                o = new Object();
+            for (var i = 0; i < info.model.keys.length; i++)
+            {
+                key = info.model.keys[i];
+                size = info.model.dict[key];
+                // console.log(`Reading size: ${size}, ndType: ${ndTypes[i]}, offset: ${offset}, key: ${key}`);
+                //alert(key + ": " + offset + ", " + size);
+                switch (size)
+                {
+                    case 0:
+                    {
+                        //special cases
+                        if (key == "firmwareInfo")
+                        {
+                            size = o["firmwareSize"];
+                            console.log(`firmwareInfo: size=${size}, offset=${offset}, key=${key}`);
+                            o[key] = String.fromCharCode.apply(null, new Uint8Array(ba, offset, size));
+                        }
+                    }
+                    break;
+                    case 1:
+                        o[key] = dv.getUint8(offset);
+                    break;
+                    case 2:
+                        o[key] = dv.getUint16(offset, isLE);
+                    break;
+                    case 4:
+                        //float (default) or uint32
+                        if (ndTypes[key] == null)
+                            o[key] = dv.getFloat32(offset, isLE);
+                        else if (ndTypes[key] == "h")
+                            o[key] = "0x" + hex(dv.getUint32(offset, isLE), 8);
+                        else
+                            o[key] = dv.getUint32(offset, isLE);
+                    break;
+                    case 8:
+                        //unix timestamp (default) or double
+                        if (ndTypes[key] == null)
+                            o[key] =  getUint64(dv, offset, isLE);
+                        else
+                            o[key] = dv.getFloat64(offset, isLE);
+                    break;
+                    default:
+                        //string (default) or other
+                        if (ndTypes[key] == null)
+                            o[key] = String.fromCharCode.apply(null, new Uint8Array(ba, offset, size));
+                        else
+                        {
+                            //"[f"
+                            var v = [];
+                            var n = size/4;
+                            for (j = 0; j < n; j++)
+                                v.push(dv.getFloat32(offset + j*4, isLE));
+                            o[key] = v.join(",");
+                        }
+                    ;
+                }
+                offset += size;
+            }
+            info.offset = offset;
+            return o;
+        }
+
+        function doreaderload(ev2)
+        {
+            ba = ev2.target.result;
+            dv = new DataView(ba);
+            //magic string
+            var ms = String.fromCharCode.apply(null, new Uint8Array(ba, 0, 8));
+            ver = dv.getUint32(8, isLE);
+            if (ms != "AUTEL_FR")
+            {
+                alert("Wrong file format");
+                return;
+            }
+            if (ver > 3)
+            {
+                alert("Unsupported flight log version");
+                return;
+            }
+            document.getElementById("help").style.display = "none";
+            var headerSize = dv.getUint16(12, isLE);
+            //alert("headerSize: " + headerSize);
+            fmt = logvers[ver - 1];
+            //update records sizes for the format version
+            for (var i = 0; i < recTypes.length; i++)
+            {
+                if (recTypes[i] == null)
+                    continue;
+                var n = recTypes[i].name;
+                var rec_size = 0;
+                var rec = fmt[n];
+                var keys = rec.keys;
+                for (j = 0; j < keys.length; j++)
+                    rec_size += rec.dict[keys[j]]
+                recTypes[i].size = rec_size;
+                //init count
+                recTypes[i].count = 0;
+                //alert(recTypes[i].name + ": " + recTypes[i].size);
+            }
+
+            var offset = 14;
+            var size = 0;
+            //read header data
+            info = {offset: offset, model: fmt.head};
+            headerData = readRecord(info);
+            console.log('headerData: ', JSON.stringify(headerData, null, 2));
+            headerData.model = fmt.head;
+            offset = info.offset;
+            //alert(headerData.firmwareInfo);
+            var offset_mem = offset;
+            var totalRecords = 0;
+            var lastCurTime = -1000;
+            while (offset < ba.byteLength)
+            {
+                //read record type
+                rt = dv.getUint8(offset);
+                if (recTypes[rt] == null)
+                {
+                    alert("Unknown record type " + rt + " at offset " + offset);
+                    return;
+                }
+                recTypes[rt].count++;
+                if (rt < 4)
+                {
+                    if (flightData)
+                        flightData.push(offset);
+                    else
+                        flightData = [offset];
+                }
+                else if ((rt == 14) || (rt == 15))
+                {
+                    if (mediaData)
+                        mediaData.push(offset);
+                    else
+                        mediaData = [offset];
+                }
+                info.offset = offset + 1;
+                info.model = fmt[recTypes[rt].name];
+                var rec = readRecord(info);
+                if (rec.curTime && ((rt == 0) || (rt == 2)))//(rec.curTime - lastCurTime >= 1000)
+                {
+                    lastCurTime = rec.curTime;
+                    //alert(totalRecords + ": " + recTypes[rt].name + ", size=" + recTypes[rt].size + " time=" + rec.curTime);
+                }
+                //alert("Offset: " + offset + " Record: " + rt);*/
+                offset += recTypes[rt].size + 1;
+                totalRecords++;
+            };
+            document.getElementById("idx_slider").max = flightData?flightData.length - 1:0;
+            //alert("totalRecords: " + totalRecords);
+            s = "";
+            for (i = 0; i < recTypes.length; i++)
+                if (recTypes[i] && (recTypes[i].count > 0))
+                    s += recTypes[i].name + ": " + recTypes[i].count + "\n";
+            //alert(s);
+            update();
+            updateKML();
+        };
+
+        function makeTable(data, model, idx)
+        {
+            s = "<table border='1' cellspacing='0'>";
+            for (i = 0; i < model.keys.length; i++)
+            {
+                n = model.keys[i];
+                v = data[n];
+                if (Array.isArray(v))
+                    v = v[idx];
+                if ((typeof(v) == "string") && (v.indexOf(';') > 0))
+                    v = v.split(';').join('<br/>');
+                else if ((model.dict[n] == 8) && !ndTypes[n])
+                {
+                    d = new Date();
+                    d.setTime(Number(v));
+                    v = "" + d.toLocaleString();
+                }
+                s += "<tr><td>" + n + "</td><td>" + v + ((i < model.keys.length - 1)?"<br/>":"") + "</td></tr>";
+            }
+            s += "</table>"
+            return s;
+        }
+
+        function makeTable2(data, model, cols, idx, attrs)
+        {
+            s = "<table border='1' cellspacing='0'" + (attrs?attrs:"")+ ">";
+            ci = -1;
+            for (i = 0; i < model.keys.length; i++)
+            {
+                if (i % cols == 0)
+                {
+                    ci++;
+                    s += "<tr>";
+                }
+                n = model.keys[i];
+                v = data[n];
+                if (Array.isArray(v))
+                    v = v[idx];
+                if (v == undefined)
+                    v = "-";
+                else if ((typeof(v) == "string") && (v.indexOf(';') > 0))
+                    v = v.split(';').join('<br/>');
+                else if ((model.dict[n] == 8) && !ndTypes[n])
+                {
+                    d = new Date();
+                    d.setTime(Number(v));
+                    v = "" + d;
+                }
+                s += "<td class='pn'>" + n + "</td><td>" + v + ((i < model.keys.length - 1)?"<br/>":"") + "</td>";
+                if ((i % cols) == (cols - 1))
+                {
+                    ci = -1;
+                    s += "</tr>";
+                }
+            }
+            while (ci >= 0)
+            {
+                s += "<td></td><td></td>";
+                if ((i % cols) == (cols - 1))
+                {
+                    ci = -1;
+                    s += "</tr>";
+                }
+                i++;
+            }
+            s += "</table>"
+            return s;
+        }
+
+        var openFile = function(ev1) {
+          var input = ev1.target;
+          headerData = null;
+          flightData = null;
+          mediaData = null;
+          lastState = 0;
+          lastIDX = 0;
+          lastChecked = 0;
+          fileCount = input.files.length;
+          document.getElementById("idx_slider").value = 0;
+          for (i = 0; i < input.files.length; i++)
+          {
+            var reader = new FileReader();
+            reader.onload = doreaderload;
+            reader.readAsArrayBuffer(input.files[i]);
+          }
+        };
+
+        var openFile2 = function(event) {
+          var input = event.target;
+          var reader = new FileReader();
+          reader.onload = function(){
+            var dataURL = reader.result;
+            var output = document.getElementById('output');
+            //output.href = dataURL;
+          };
+          reader.readAsDataURL(input.files[0]);
+        };
+
+        function fmt2(v)
+        {
+            s = "" + v;
+            while (s.length < 2)
+                s = "0" + s;
+            return s;
+        }
+
+        function updateKML()
+        {
+            if (headerData.flightAt && (recTypes[0].count > 0))
+            {
+                var d = new Date();
+                d.setTime(Number(headerData.flightAt));
+                d = d.toLocaleString().replaceAll("/","-");
+                d = d.replaceAll(":","-");
+                d = d.replaceAll(",","_");
+                d = d.replaceAll(" ","");
+                var fname = "flight_" + d.toLowerCase() + ".kml";
+                var el = document.getElementById("savefile");
+                el.download = fname;
+                el.href = makeTextFile(generateKML());
+            }
+        }
+
+        function generateKML()
+        {
+            if (!(headerData.flightAt && (recTypes[0].count > 0)))
+            {
+                alert("Warning: Wrong start time or no GPS data (indoor flight?)");
+                return;
+            }
+            var baseAlt = Number(document.getElementById("homeAlt").value);
+            t = Number(headerData.flightAt);
+            //build selected flight data: time, lon, lat, alt, yaw, roll, pitch, power, voltage, current
+            var sfd = {time:[], lon:[], lat:[], alt:[], yaw:[], roll:[], pitch:[], speed:[], power:[], voltage:[], current:[], battemp:[]};
+            for (var i = 0; i < flightData.length; i++)
+            {
+                var rt = dv.getUint8(flightData[i]);
+                if (rt != 0)
+                    continue;
+                var rec = readRecord({offset: flightData[i] + 1, model: fmt["outfull"]});
+                sfd.time.push(Math.round((t + rec.curTime)/1000)*1000);
+                sfd.lon.push(rec.droneLongitude);
+                sfd.lat.push(rec.droneLatitude);
+                sfd.alt.push(rec.altitude + baseAlt);
+                sfd.yaw.push(rec.droneYaw*180/Math.PI);
+                sfd.roll.push(rec.droneRoll*180/Math.PI);
+                sfd.pitch.push(rec.dronePitch*180/Math.PI);
+                sfd.speed.push(Math.sqrt(rec.xSpeed*rec.xSpeed + rec.ySpeed*rec.ySpeed + rec.zSpeed*rec.zSpeed));
+                sfd.power.push((rec.currentElectricity/rec.fullChargeVolume)*100);
+                sfd.voltage.push(rec.currentVoltage/1000);
+                sfd.current.push(Math.abs(rec.currentCurrent)/1000);
+                sfd.battemp.push(rec.batteryTemperature);
+            }
+            //
+            var s = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            s += '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">\n';
+            s += '\t<Document>\n';
+            s += '\t\t<Style id="track">\n\t\t\t<IconStyle>\n\t\t\t\t<Icon>\n\t\t\t\t\t<href>http://earth.google.com/images/kml-icons/track-directional/track-0.png</href>\n\t\t\t\t</Icon>\n\t\t\t</IconStyle>\n\t\t\t<LineStyle>\n\t\t\t\t<color>ffffac59</color>\n\t\t\t\t<width>2</width>\n\t\t\t</LineStyle>\n\t\t</Style>\n\t\t<StyleMap id="stylemap">\n\t\t\t<Pair>\n\t\t\t\t<key>normal</key>\n\t\t\t\t<styleUrl>track</styleUrl>\n\t\t\t</Pair>\n\t\t\t<Pair>\n\t\t\t\t<key>highlight</key>\n\t\t\t\t<styleUrl>track</styleUrl>\n\t\t\t</Pair>\n\t\t</StyleMap>\n';
+            s += '\t\t<Schema id="schema">\n';
+            var isExtData = false;
+            if (sfd.speed)
+            {
+                s += '\t\t\t<gx:SimpleArrayField name="dspeed" type="float">\n';
+                s += '\t\t\t\t<displayName>Drone speed</displayName>\n';
+                s += '\t\t\t</gx:SimpleArrayField>\n';
+                isExtData = true;
+            }
+            if (sfd.power)
+            {
+                s += '\t\t\t<gx:SimpleArrayField name="power" type="float">\n';
+                s += '\t\t\t\t<displayName>Power</displayName>\n';
+                s += '\t\t\t</gx:SimpleArrayField>\n';
+                isExtData = true;
+            }
+            if (sfd.voltage)
+            {
+                s += '\t\t\t<gx:SimpleArrayField name="voltage" type="float">\n';
+                s += '\t\t\t\t<displayName>Voltage</displayName>\n';
+                s += '\t\t\t</gx:SimpleArrayField>\n';
+                isExtData = true;
+            }
+            if (sfd.current)
+            {
+                s += '\t\t\t<gx:SimpleArrayField name="current" type="float">\n';
+                s += '\t\t\t\t<displayName>Current</displayName>\n';
+                s += '\t\t\t</gx:SimpleArrayField>\n';
+                isExtData = true;
+            }
+            if (sfd.battemp)
+            {
+                s += '\t\t\t<gx:SimpleArrayField name="battemp" type="float">\n';
+                s += '\t\t\t\t<displayName>Bat.Temp.(°C)</displayName>\n';
+                s += '\t\t\t</gx:SimpleArrayField>\n';
+                isExtData = true;
+            }
+            s += '\t\t</Schema>\n';
+            s += '\t\t<Folder>\n';
+            s += '\t\t\t<Placemark>\n';
+            s += '\t\t\t\t<styleUrl>#stylemap</styleUrl>\n';
+            s += '\t\t\t\t<gx:Track>\n';
+            s += '\t\t\t\t\t<altitudeMode>absolute</altitudeMode>\n';
+            var d = new Date();
+            for (i = 0; i < sfd.time.length; i++)
+            {
+                d.setTime(sfd.time[i]);
+                s += "\t\t\t\t\t<when>" + d.getFullYear() + "-" + fmt2(d.getMonth() + 1) + "-" + fmt2(d.getDate()) + "T" +
+                fmt2(d.getHours()) + ":" + fmt2(d.getMinutes()) + ":" + fmt2(d.getSeconds()) + "</when>\n";
+            }
+            //<gx:coord>-122.207881 37.371915 156.000000</gx:coord>
+            for (i = 0; i < sfd.time.length; i++)
+            {
+                s += "\t\t\t\t\t<gx:coord>" + sfd.lon[i] + " " + sfd.lat[i] + " " + sfd.alt[i] + "</gx:coord>\n";
+            }
+            //<gx:angles>45.54676 66.2342 77.0</gx:angles>
+            for (i = 0; i < sfd.time.length; i++)
+            {
+                s += "\t\t\t\t\t<gx:angles>" + sfd.yaw[i] + " " + sfd.pitch[i] + " " + sfd.roll[i] + "</gx:angles>\n";
+            }
+            if (isExtData)
+            {
+                s += '\t\t\t\t\t<ExtendedData>\n';
+                s += '\t\t\t\t\t\t<SchemaData schemaUrl="#schema">\n';
+                if (sfd.speed)
+                {
+                    s += '\t\t\t\t\t\t\t<gx:SimpleArrayData name="dspeed">\n';
+                    for (i = 0; i<sfd.time.length; i++)
+                        s += '\t\t\t\t\t\t\t\t<gx:value>' + sfd.speed[i] + '</gx:value>\n';
+                    s += '\t\t\t\t\t\t\t</gx:SimpleArrayData>\n';
+                }
+                if (sfd.power)
+                {
+                    s += '\t\t\t\t\t\t\t<gx:SimpleArrayData name="power">\n';
+                    for (i = 0; i<sfd.time.length; i++)
+                        s += '\t\t\t\t\t\t\t\t<gx:value>' + sfd.power[i] + '</gx:value>\n';
+                    s += '\t\t\t\t\t\t\t</gx:SimpleArrayData>\n';
+                }
+                if (sfd.voltage)
+                {
+                    s += '\t\t\t\t\t\t\t<gx:SimpleArrayData name="voltage">\n';
+                    for (i = 0; i<sfd.time.length; i++)
+                        s += '\t\t\t\t\t\t\t\t<gx:value>' + sfd.voltage[i] + '</gx:value>\n';
+                    s += '\t\t\t\t\t\t\t</gx:SimpleArrayData>\n';
+                }
+                if (sfd.current)
+                {
+                    s += '\t\t\t\t\t\t\t<gx:SimpleArrayData name="current">\n';
+                    for (i = 0; i<sfd.time.length; i++)
+                        s += '\t\t\t\t\t\t\t\t<gx:value>' + sfd.current[i] + '</gx:value>\n';
+                    s += '\t\t\t\t\t\t\t</gx:SimpleArrayData>\n';
+                }
+                if (sfd.battemp)
+                {
+                    s += '\t\t\t\t\t\t\t<gx:SimpleArrayData name="battemp">\n';
+                    for (i = 0; i<sfd.time.length; i++)
+                        s += '\t\t\t\t\t\t\t\t<gx:value>' + sfd.battemp[i] + '</gx:value>\n';
+                    s += '\t\t\t\t\t\t\t</gx:SimpleArrayData>\n';
+                }
+                s += '\t\t\t\t\t\t</SchemaData>\n';
+                s += '\t\t\t\t\t</ExtendedData>\n';
+            }
+            s += '\t\t\t\t</gx:Track>\n';
+            s += '\t\t\t</Placemark>\n';
+            s += '\t\t</Folder>\n';
+            s += '\t</Document>\n';
+            s += '</kml>\n';
+            return s;
+        }
+    </script>
+</head>
+<body>
+    <h2 style="line-height:1"><span class="au">&nbsp;Autel Explorer&nbsp;</span><span style="font-size:80%">&nbsp;Flight Logs Reader</span></h2>
+    <span id="str1">Select a flight log file&nbsp;</span><input type='file' accept='*' multiple='0' onchange='openFile(event)'/>
+    <div id="export" style="display:none"><span>&nbsp;Home sea level:</span><input id="homeAlt" value="0" size="8" onchange="updateKML()"/>m&nbsp;&nbsp;<a id="savefile" download="flight.kml" href="javascript:alert(':)')"><span id="str5">Save track for Google Earth&trade;</span></a></div>
+    <div id="noexport" style="display:none"><span style="color:#0000B0">&nbsp;&nbsp;No GPS data in the flight log (indoor flight?)</span></div><br/>
+    <br/>
+    <div id="section">
+        <span id="header" style="display:none"><input type="radio" id="rad_header" name="rad1" value="0" onchange="update()"/><label id="str2" for="rad_header">Summary</label></span>
+        <span id="fitems" style="display:none"><input type="radio" id="rad_fitems" name="rad1" value="1" onchange="update()"/><label id="str3" for="rad_fitems">Flight records</label></span>
+        <span id="media" style="display:none"><input type="radio" id="rad_media" name="rad1" value="2" onchange="update()"/><label id="str4" for="rad_footer">Media events</label></span>
+    </div>
+    <hr/>
+    <p id='help'><b>Q</b>: Where can I find my flight logs?&nbsp;&nbsp;<b>A</b>: See the short </span><a href="https://youtu.be/tQr5I3YhuYQ">video tutorial</a></p>
+    <p id="output"></p>
+    <div id="controls" style="display:none">
+        <input type="range" id="idx_slider" name="power" min="0" max="100" value="0" step="1" oninput="update()" style="width:100%"/><span id="idx">0</span>
+    </div>
+</body>
+</html>
