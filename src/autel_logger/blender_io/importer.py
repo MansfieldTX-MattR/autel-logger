@@ -1007,8 +1007,7 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         flight_props.drone_object = drone_empty
         flight_props.gimbal_object = gimbal_empty
         flight_props.flight_path_object = flight_path
-        # self._animate_object(flight_props, context)
-        animate_objects(flight_props, context, initial=True)
+        bpy.ops.scene.autel_flight_log_update_animation() # type: ignore[attr-defined]
         return {'FINISHED'}
 
     def _setup_camera(self, gimbal_empty: bpy.types.Object, context: bpy.types.Context) -> bpy.types.Object:
