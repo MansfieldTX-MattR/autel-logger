@@ -23,6 +23,13 @@ bl_info = {
     "category": "Import-Export",
 }
 
+CAMERA_FOCAL_LENGTH = 10.57  # mm, Autel EVO II Pro
+CAMERA_SENSOR_WIDTH = 13.2  # mm, Autel EVO II Pro
+CAMERA_SENSOR_HEIGHT = 8.8  # mm, Autel EVO II Pro
+CAMERA_ASPECT_RATIO = CAMERA_SENSOR_WIDTH / CAMERA_SENSOR_HEIGHT
+CAMERA_FOV = 2 * math.degrees(math.atan((CAMERA_SENSOR_WIDTH / 2) / CAMERA_FOCAL_LENGTH))  # degrees, horizontal FOV
+
+
 
 # class LatLonProp(bpy.types.PropertyGroup):
 #     latitude: bpy.props.FloatProperty(
@@ -1012,6 +1019,10 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
 
     def _setup_camera(self, gimbal_empty: bpy.types.Object, context: bpy.types.Context) -> bpy.types.Object:
         camera = self._create_object('CAMERA', 'Drone_Camera')#, parent=gimbal_empty)
+        assert isinstance(camera.data, bpy.types.Camera)
+        camera.data.lens = CAMERA_FOCAL_LENGTH
+        camera.data.sensor_width = CAMERA_SENSOR_WIDTH
+        camera.data.sensor_fit = 'HORIZONTAL'
         camera.rotation_euler = (math.radians(90), 0, 0)
         bpy.ops.object.constraint_add(type='COPY_LOCATION')
         loc_constraint: bpy.types.CopyLocationConstraint = camera.constraints['Copy Location'] # type: ignore
