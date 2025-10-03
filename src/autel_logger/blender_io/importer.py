@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Self, Literal, TYPE_CHECKING, cast, overload
+from typing import Self, Literal, Iterable, TYPE_CHECKING, cast, overload
 import json
 import datetime
 from pathlib import Path
@@ -637,11 +637,34 @@ class FlightProperties(bpy.types.PropertyGroup):
             return None
         current_frame = context.scene.frame_current
         for item in self.video_items:
-            start_frame = item.get_start_frame(context)
-            end_frame = item.get_end_frame(context)
+            item = cast(VideoItemProperties, item)
+            start_frame = round(item.get_start_frame(context))
+            end_frame = round(item.get_end_frame(context))
             if start_frame <= current_frame <= end_frame:
                 return item
         return None
+
+    def get_next_video_item(self, context: bpy.types.Context) -> VideoItemProperties | None:
+        if context.scene is None:
+            return None
+        current_frame = context.scene.frame_current
+        video_items = cast(Iterable[VideoItemProperties], self.video_items)
+        future_items = [item for item in video_items if item.get_start_frame(context) > current_frame]
+        if not future_items:
+            return None
+        next_item = min(future_items, key=lambda item: item.get_start_frame(context))
+        return next_item
+
+    def get_previous_video_item(self, context: bpy.types.Context) -> VideoItemProperties | None:
+        if context.scene is None:
+            return None
+        current_frame = context.scene.frame_current
+        video_items = cast(Iterable[VideoItemProperties], self.video_items)
+        past_items = [item for item in video_items if item.get_end_frame(context) < current_frame]
+        if not past_items:
+            return None
+        prev_item = max(past_items, key=lambda item: item.get_end_frame(context))
+        return prev_item
 
 
 # class OBJECT_OT_flight_log_properties(bpy.types.Operator):
@@ -743,10 +766,13 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             #     "track_items_index",
             #     rows=3,
             # )
+            box = layout.box()
+            box.label(text="Current Video Item:")
+            row = box.row()
+            row.operator(SCENE_OT_autel_flight_log_prev_video_item.bl_idname, text="Previous")
+            row.operator(SCENE_OT_autel_flight_log_next_video_item.bl_idname, text="Next")
             video_item = selected_flight.get_current_video_item(context)
             if video_item is not None:
-                box = layout.box()
-                box.label(text="Current Video Item:")
                 box.prop(video_item, "src_filename")
                 box.prop(video_item, "filename")
                 box.prop(video_item, "start_time")
@@ -855,19 +881,29 @@ def animate_objects(
         scene.frame_set(current_frame)
 
 
-def next_prev_item_helper(context: bpy.types.Context, direction: Literal['NEXT', 'PREV']) -> set[str]:
+def next_prev_item_helper(context: bpy.types.Context, item_type: Literal['TRACK', 'VIDEO'], direction: Literal['NEXT', 'PREV']) -> set[str]:
     selected_flight_name = context.scene.autel_flight_logs_selected_name # type: ignore[assigned]
     selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
     if selected_flight is None:
         return {'CANCELLED'}
-    if direction == 'NEXT':
-        item = selected_flight.get_next_track_item(context)
+    if item_type == 'TRACK':
+        if direction == 'NEXT':
+            item = selected_flight.get_next_track_item(context)
+        else:
+            item = selected_flight.get_previous_track_item(context)
+        frame = item.frame if item is not None else None
     else:
-        item = selected_flight.get_previous_track_item(context)
+        if direction == 'NEXT':
+            item = selected_flight.get_next_video_item(context)
+        else:
+            item = selected_flight.get_previous_video_item(context)
+        frame = item.get_start_frame(context) if item is not None else None
+        if frame is not None:
+            frame = math.ceil(frame)
     if item is None:
         return {'CANCELLED'}
-    if context.scene is not None:
-        context.scene.frame_set(frame=item.frame)
+    if context.scene is not None and frame is not None:
+        context.scene.frame_set(frame=frame)
         return {'FINISHED'}
     return {'CANCELLED'}
 
@@ -888,7 +924,7 @@ class SCENE_OT_autel_flight_log_next_item(bpy.types.Operator):
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        return next_prev_item_helper(context, 'NEXT')
+        return next_prev_item_helper(context, 'TRACK', 'NEXT')
 
     @classmethod
     def _register_cls(cls) -> None:
@@ -914,7 +950,61 @@ class SCENE_OT_autel_flight_log_prev_item(bpy.types.Operator):
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        return next_prev_item_helper(context, 'PREV')
+        return next_prev_item_helper(context, 'TRACK', 'PREV')
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
+
+
+class SCENE_OT_autel_flight_log_next_video_item(bpy.types.Operator):
+    """Go to the next video item in the selected flight log"""
+    bl_idname = "scene.autel_flight_log_next_video_item"
+    bl_label = "Next Video Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        scene = context.scene
+        if scene is None:
+            return False
+        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
+        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        return selected_flight is not None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        return next_prev_item_helper(context, 'VIDEO', 'NEXT')
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
+
+
+class SCENE_OT_autel_flight_log_prev_video_item(bpy.types.Operator):
+    """Go to the previous video item in the selected flight log"""
+    bl_idname = "scene.autel_flight_log_prev_video_item"
+    bl_label = "Previous Video Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        scene = context.scene
+        if scene is None:
+            return False
+        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
+        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        return selected_flight is not None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        return next_prev_item_helper(context, 'VIDEO', 'PREV')
 
     @classmethod
     def _register_cls(cls) -> None:
@@ -1106,6 +1196,8 @@ def register() -> None:
     SCENE_OT_autel_flight_log_update_animation._register_cls()
     SCENE_OT_autel_flight_log_next_item._register_cls()
     SCENE_OT_autel_flight_log_prev_item._register_cls()
+    SCENE_OT_autel_flight_log_next_video_item._register_cls()
+    SCENE_OT_autel_flight_log_prev_video_item._register_cls()
     OBJECT_PT_flight_log_panel._register_cls()
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
@@ -1121,6 +1213,8 @@ def unregister() -> None:
         VideoItemProperties._unregister_cls()
         SCENE_OT_autel_flight_log_next_item._unregister_cls()
         SCENE_OT_autel_flight_log_prev_item._unregister_cls()
+        SCENE_OT_autel_flight_log_next_video_item._unregister_cls()
+        SCENE_OT_autel_flight_log_prev_video_item._unregister_cls()
     except Exception as e:
         print(f"Error during unregister: {e}")
 
