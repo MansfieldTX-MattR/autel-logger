@@ -1127,10 +1127,12 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         camera.data.sensor_fit = 'HORIZONTAL'
         camera.rotation_euler = (math.radians(90), 0, 0)
         bpy.ops.object.constraint_add(type='COPY_LOCATION')
-        loc_constraint: bpy.types.CopyLocationConstraint = camera.constraints['Copy Location'] # type: ignore
+        loc_constraint = camera.constraints['Copy Location']
+        assert isinstance(loc_constraint, bpy.types.CopyLocationConstraint)
         loc_constraint.target = gimbal_empty
         bpy.ops.object.constraint_add(type='COPY_ROTATION')
-        rot_constraint: bpy.types.CopyRotationConstraint = camera.constraints['Copy Rotation'] # type: ignore
+        rot_constraint = camera.constraints['Copy Rotation']
+        assert isinstance(rot_constraint, bpy.types.CopyRotationConstraint)
         rot_constraint.target = gimbal_empty
         # rot_constraint.invert_x = True
         # rot_constraint.invert_z = True
