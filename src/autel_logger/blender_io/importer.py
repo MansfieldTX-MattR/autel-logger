@@ -104,12 +104,16 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         description="Latitude in decimal degrees",
         default=0.0,
         precision=6,
+        min=-90.0,
+        max=90.0,
     ) # type: ignore[call-arg]
     longitude: bpy.props.FloatProperty(
         name="Longitude",
         description="Longitude in decimal degrees",
         default=0.0,
         precision=6,
+        min=-180.0,
+        max=180.0,
     ) # type: ignore[call-arg]
     altitude: bpy.props.FloatProperty(
         name="Altitude",
@@ -282,12 +286,16 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         description="Latitude of the video location",
         default=0.0,
         precision=6,
+        min=-90.0,
+        max=90.0,
     ) # type: ignore[call-arg]
     longitude: bpy.props.FloatProperty(
         name="Longitude",
         description="Longitude of the video location",
         default=0.0,
         precision=6,
+        min=-180.0,
+        max=180.0,
     ) # type: ignore[call-arg]
     def _get_start_frame(self) -> int:
         context = bpy.context
@@ -419,12 +427,16 @@ class FlightProperties(bpy.types.PropertyGroup):
         description="Starting latitude of the flight",
         default=0.0,
         precision=6,
+        min=-90.0,
+        max=90.0,
     ) # type: ignore
     start_longitude: bpy.props.FloatProperty(
         name="Start Longitude",
         description="Starting longitude of the flight",
         default=0.0,
         precision=6,
+        min=-180.0,
+        max=180.0,
     ) # type: ignore
     track_items: bpy.props.CollectionProperty(
         type=TrackItemProperties,
