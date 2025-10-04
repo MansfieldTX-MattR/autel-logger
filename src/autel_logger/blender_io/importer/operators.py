@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Self, Literal, Iterable, TYPE_CHECKING, cast, overload
+from typing import Literal, TYPE_CHECKING
 import json
 import datetime
 from pathlib import Path
@@ -46,7 +46,6 @@ def animate_objects(
         clear_all_keyframes(flight_props.gimbal_object)
     try:
         for item in flight_props.track_items:
-            item = cast(TrackItemProperties, item)
             frame = item.frame
             scene.frame_set(frame=int(frame), subframe=frame % 1)
             if item.has_location:
@@ -257,12 +256,15 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
     bl_label = "Import Autel Flight Log"
     bl_options = {'REGISTER', 'UNDO'}
 
-    filepath: bpy.props.StringProperty(
-        name="File Path",
-        description="Filepath used for importing the flight log file",
-        maxlen=1024,
-        subtype='FILE_PATH',
-    )   # type: ignore
+    if TYPE_CHECKING:
+        filepath: str
+    else:
+        filepath: bpy.props.StringProperty(
+            name="File Path",
+            description="Filepath used for importing the flight log file",
+            maxlen=1024,
+            subtype='FILE_PATH',
+        )
 
     @classmethod
     def _register_cls(cls) -> None:
