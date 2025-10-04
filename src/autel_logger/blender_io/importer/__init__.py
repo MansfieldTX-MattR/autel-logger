@@ -36,7 +36,7 @@ def menu_func_import(self, context: bpy.types.Context) -> None:
 def is_registered() -> bool:
     op_name = IMPORT_SCENE_OT_autel_flight_log.bl_idname.split('.')[-1]
     return hasattr(bpy.ops.import_scene, op_name)
-    # return hasattr(bpy.types, IMPORT_SCENE_OT_autel_flight_log.__name__)
+
 
 def register() -> None:
     TrackItemProperties._register_cls()

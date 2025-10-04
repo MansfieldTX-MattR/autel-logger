@@ -1,19 +1,16 @@
 from __future__ import annotations
 from typing import Literal, TYPE_CHECKING
 import json
-import datetime
 from pathlib import Path
 import math
 
 import bpy
-from bl_ui.generic_ui_list import draw_ui_list
 
 if TYPE_CHECKING:
     from ..types import *
 
 from .props import (
-    FlightProperties, TrackItemProperties, VideoItemProperties,
-    CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
+    FlightProperties, CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
 )
 
 
@@ -55,16 +52,6 @@ def animate_objects(
                 gimbal_obj.location.y = item.relative_location[1]
                 drone_obj.location.z = item.relative_height
                 gimbal_obj.location.z = item.relative_height
-            # drone_obj.rotation_euler = (
-            #     math.radians(item.drone_orientation[0]),
-            #     math.radians(item.drone_orientation[1]),
-            #     math.radians(item.drone_orientation[2]),
-            # )
-            # gimbal_obj.rotation_euler = (
-            #     math.radians(item.gimbal_orientation[0]),
-            #     math.radians(item.gimbal_orientation[1]),
-            #     math.radians(item.gimbal_orientation[2]),
-            # )
             drone_obj.rotation_euler = item.drone_orientation
             gimbal_obj.rotation_euler = item.gimbal_orientation
             set_active_object(drone_obj)
@@ -295,12 +282,10 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         drone_empty = self._create_object('EMPTY', 'Drone_Empty')
         drone_empty.empty_display_type = 'ARROWS'
         drone_empty.parent = parent_object
-        # self._animate_object(data['drone'], drone_empty, context)
         gimbal_empty = self._create_object('EMPTY', 'Gimbal_Empty')
         gimbal_empty.empty_display_type = 'ARROWS'
         gimbal_empty.parent = parent_object
         self._setup_camera(gimbal_empty, context)
-        # self._animate_object(data['gimbal'], gimbal_empty, context)
         flight_props.parent_object = parent_object
         flight_props.drone_object = drone_empty
         flight_props.gimbal_object = gimbal_empty
@@ -364,17 +349,6 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
             assert obj.data is not None
             obj.data.name = name
         return obj
-
-    # def build_drone(self, data: BlObjectWithAnimationData, context: bpy.types.Context) -> bpy.types.Object:
-
-    # def _set_active_object(self, obj: bpy.types.Object, context: bpy.types.Context) -> None:
-    #     bpy.ops.object.select_all(action='DESELECT')
-    #     obj.select_set(True)
-    #     assert context.view_layer is not None
-    #     context.view_layer.objects.active = obj
-
-    # def _animate_object(self, flight_props: FlightProperties, context: bpy.types.Context) -> None:
-    #     animate_objects(flight_props, context)
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set[str]:
         assert context is not None

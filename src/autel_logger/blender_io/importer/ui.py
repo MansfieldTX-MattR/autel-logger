@@ -1,9 +1,5 @@
 from __future__ import annotations
-from typing import Self, Literal, Iterable, TYPE_CHECKING, cast, overload
-import json
-import datetime
-from pathlib import Path
-import math
+from typing import TYPE_CHECKING
 
 import bpy
 from bl_ui.generic_ui_list import draw_ui_list
@@ -35,15 +31,6 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
         scene = context.scene
         assert scene is not None
         layout = self.layout
-        # layout.template_list(
-        #     "SCENE_UL_autel_flight_logs",
-        #     "",
-        #     scene,
-        #     "autel_flight_logs",
-        #     scene,
-        #     "autel_flight_logs_index",
-        #     rows=3,
-        # )
         box = layout.box()
         box.label(text="Import Flight Log:")
         box.operator(IMPORT_SCENE_OT_autel_flight_log.bl_idname)
@@ -59,28 +46,10 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             active_index_path="scene.autel_flight_logs_index",
             unique_id="SCENE_UL_autel_flight_logs",
         )
-        # flight_logs = scene.autel_flight_logs # type: ignore[attr-defined]
         selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
         selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name) if selected_flight_name else None
-        # selected_flight = scene.autel_flight_log_selected_item # type: ignore[assigned]
         if selected_flight is None:
             pass
-        #     layout.template_list(
-        #         "SCENE_UL_autel_flight_logs",
-        #         "",
-        #         scene,
-        #         "autel_flight_logs",
-        #         scene,
-        #         "autel_flight_logs_index",
-        #         rows=3,
-        #     )
-        #     # if len(flight_logs) == 0:
-        #     #     layout.label(text="No flight logs imported")
-        #     # else:
-        #     #     layout.label(text="Select a flight log:")
-        #     #     for flight in flight_logs:
-        #     #         op = layout.operator(IMPORT_SCENE_OT_autel_flight_log.bl_idname, text=flight.name)
-        #     #         op.filepath = flight.name  # type: ignore[attr-defined]
         else:
             box = layout.box()
             box.label(text=f"Flight: {selected_flight.name}")
@@ -90,17 +59,7 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             box.prop(selected_flight, "duration")
             box.prop(selected_flight, "distance")
             box.prop(selected_flight, "max_altitude")
-            # box.label(text="Track Items:")
-            # row = layout.row()
-            # row.template_list(
-            #     "UI_UL_list",
-            #     "track_items",
-            #     selected_flight,
-            #     "track_items",
-            #     selected_flight,
-            #     "track_items_index",
-            #     rows=3,
-            # )
+
             box = layout.box()
             box.label(text="Current Video Item:")
             row = box.row()
@@ -118,11 +77,7 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
                 box.prop(video_item, "start_frame")
                 box.prop(video_item, "end_frame")
                 box.prop(video_item, "current_frame")
-                # row = box.row()
-                # row.label(text='Current Frame:')
-                # cur_frame = video_item.get_current_frame(context)
-                # # cur_frame = context.scene.frame_current
-                # row.label(text=f'{cur_frame}')
+
             item = selected_flight.get_current_track_item(context)
             box = layout.box()
             box.label(text="Selected Track Item:")
