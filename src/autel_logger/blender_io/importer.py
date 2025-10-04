@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Self, Literal, Iterable, TYPE_CHECKING, cast, overload
+from typing import TypeVar, Generic, Self, Literal, Annotated, TYPE_CHECKING, overload
 import json
 import datetime
 from pathlib import Path
@@ -8,8 +8,21 @@ import math
 import bpy
 from bl_ui.generic_ui_list import draw_ui_list
 
+T = TypeVar("T")
+
+
 if TYPE_CHECKING:
     from .types import *
+
+    class CollectionProp(bpy.types.bpy_prop_collection[T], Generic[T]):
+        def add(self) -> T: ...
+        def remove(self, obj: T) -> None: ...
+else:
+    class CollectionProp(Generic[T]):
+        pass
+    BlVector2D = tuple[float, float]
+    BlVector3D = tuple[float, float, float]
+
 
 bl_info = {
     "name": "Autel Flight Log Importer",
@@ -80,102 +93,102 @@ def frame_to_timestamp(frame: int|float, context: bpy.types.Context|None = None)
 
 
 class TrackItemProperties(bpy.types.PropertyGroup):
-    index: bpy.props.IntProperty(
+    index: Annotated[int, bpy.props.IntProperty(
         name="Index",
         description="Index of the track item in the flight",
         default=0,
-    ) # type: ignore[call-arg]
+    )]
     # def _get_frame(self) -> int:
     #     return timestamp_to_frame(self.scene_time, as_int=True)
-    frame: bpy.props.IntProperty(
+    frame: Annotated[int, bpy.props.IntProperty(
         name="Frame",
         description="Frame number in the Blender timeline",
         default=0,
-    ) # type: ignore[call-arg]
-    scene_time: bpy.props.FloatProperty(
+    )]
+    scene_time: Annotated[float, bpy.props.FloatProperty(
         name="Scene Time",
         description="Time offset from the start of the flight in seconds",
         subtype='TIME',
         unit='TIME',
         default=0.0,
-    ) # type: ignore[call-arg]
-    latitude: bpy.props.FloatProperty(
+    )]
+    latitude: Annotated[float, bpy.props.FloatProperty(
         name="Latitude",
         description="Latitude in decimal degrees",
         default=0.0,
         precision=6,
-    ) # type: ignore[call-arg]
-    longitude: bpy.props.FloatProperty(
+    )]
+    longitude: Annotated[float, bpy.props.FloatProperty(
         name="Longitude",
         description="Longitude in decimal degrees",
         default=0.0,
         precision=6,
-    ) # type: ignore[call-arg]
-    altitude: bpy.props.FloatProperty(
+    )]
+    altitude: Annotated[float, bpy.props.FloatProperty(
         name="Altitude",
         description="Altitude in meters",
         subtype='DISTANCE',
         unit='LENGTH',
         default=0.0,
-    ) # type: ignore[call-arg]
-    drone_orientation: bpy.props.FloatVectorProperty(
+    )]
+    drone_orientation: Annotated[BlVector3D, bpy.props.FloatVectorProperty(
         name="Drone Orientation",
         description="Orientation of the drone as (pitch, roll, yaw) in degrees",
         size=3,
         default=(0.0, 0.0, 0.0),
         subtype='EULER',
         unit='ROTATION',
-    ) # type: ignore[call-arg]
-    gimbal_orientation: bpy.props.FloatVectorProperty(
+    )]
+    gimbal_orientation: Annotated[BlVector3D, bpy.props.FloatVectorProperty(
         name="Gimbal Orientation",
         description="Orientation of the gimbal as (pitch, roll, yaw) in degrees",
         size=3,
         default=(0.0, 0.0, 0.0),
         subtype='EULER',
         unit='ROTATION',
-    ) # type: ignore[call-arg]
-    gimbal_orientation_relative: bpy.props.FloatVectorProperty(
+    )]
+    gimbal_orientation_relative: Annotated[BlVector3D, bpy.props.FloatVectorProperty(
         name="Gimbal Orientation Relative",
         description="Relative orientation of the gimbal as (pitch, roll, yaw) in degrees",
         size=3,
         default=(0.0, 0.0, 0.0),
         subtype='EULER',
         unit='ROTATION',
-    ) # type: ignore[call-arg]
-    speed: bpy.props.FloatVectorProperty(
+    )]
+    speed: Annotated[BlVector3D, bpy.props.FloatVectorProperty(
         name="Speed",
         description="Speed in meters per second",
         unit='VELOCITY',
         size=3,
         default=(0.0, 0.0, 0.0),
-    ) # type: ignore[call-arg]
-    relative_location: bpy.props.FloatVectorProperty(
+    )]
+    relative_location: Annotated[BlVector2D, bpy.props.FloatVectorProperty(
         name="Relative Location",
         description="Relative location from the start of the flight in meters (X, Y, Z)",
         size=2,
         default=(0.0, 0.0),
         subtype='TRANSLATION',
         unit='LENGTH',
-    ) # type: ignore[call-arg]
-    has_location: bpy.props.BoolProperty(
+    )]
+    has_location: Annotated[bool, bpy.props.BoolProperty(
         name="Has Location",
         description="Whether the track item has a location",
         default=False,
-    ) # type: ignore[call-arg]
-    relative_height: bpy.props.FloatProperty(
+    )]
+    relative_height: Annotated[float, bpy.props.FloatProperty(
         name="Relative Height",
         description="Relative height from the start of the flight in meters",
         subtype='DISTANCE',
         unit='LENGTH',
         default=0.0,
-    ) # type: ignore[call-arg]
-    distance: bpy.props.FloatProperty(
+    )]
+    distance: Annotated[float, bpy.props.FloatProperty(
         name="Distance",
         description="Distance from the start of the flight in meters",
         subtype='DISTANCE',
         unit='LENGTH',
         default=0.0,
-    ) # type: ignore[call-arg]
+    )]
 
     def update_frame(self, context: bpy.types.Context) -> None:
         """Update the frame number based on the scene fps"""
@@ -189,7 +202,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         context: bpy.types.Context
     ) -> Self:
         item = flight.track_items.add()
-        item = cast(Self, item)
+        assert isinstance(item, cls)
         # item.index = data['index']
         # item.scene_time = data['time']
         # item.update_frame(context)
@@ -224,7 +237,8 @@ class TrackItemProperties(bpy.types.PropertyGroup):
             item.has_location = True
         else:
             item.has_location = False
-        item.altitude = item_data['altitude']
+        if item_data['altitude'] is not None:
+            item.altitude = item_data['altitude']
         item.drone_orientation = item_data['drone_orientation']
         item.gimbal_orientation = item_data['gimbal_orientation']
         item.gimbal_orientation_relative = item_data['gimbal_orientation_relative']
@@ -251,44 +265,44 @@ class TrackItemProperties(bpy.types.PropertyGroup):
 
 
 class VideoItemProperties(bpy.types.PropertyGroup):
-    src_filename: bpy.props.StringProperty(
+    src_filename: Annotated[str, bpy.props.StringProperty(
         name="Source Filename",
         description="Original filename of the video",
         default="",
-    ) # type: ignore
-    filename: bpy.props.StringProperty(
+    )]
+    filename: Annotated[str, bpy.props.StringProperty(
         name="Filename",
         description="Filename of the video",
         subtype='FILE_NAME',
         default="",
-    ) # type: ignore
-    start_time: bpy.props.FloatProperty(
+    )]
+    start_time: Annotated[float, bpy.props.FloatProperty(
         name="Start Time",
         description="Start time of the video in seconds",
         default=0.0,
-    ) # type: ignore
-    end_time: bpy.props.FloatProperty(
+    )]
+    end_time: Annotated[float, bpy.props.FloatProperty(
         name="End Time",
         description="End time of the video in seconds",
         default=0.0,
-    ) # type: ignore[call-arg]
-    duration: bpy.props.FloatProperty(
+    )]
+    duration: Annotated[float, bpy.props.FloatProperty(
         name="Duration",
         description="Duration of the video in seconds",
         default=0.0,
-    ) # type: ignore[call-arg]
-    latitude: bpy.props.FloatProperty(
+    )]
+    latitude: Annotated[float, bpy.props.FloatProperty(
         name="Latitude",
         description="Latitude of the video location",
         default=0.0,
         precision=6,
-    ) # type: ignore[call-arg]
-    longitude: bpy.props.FloatProperty(
+    )]
+    longitude: Annotated[float, bpy.props.FloatProperty(
         name="Longitude",
         description="Longitude of the video location",
         default=0.0,
         precision=6,
-    ) # type: ignore[call-arg]
+    )]
     def _get_start_frame(self) -> int:
         context = bpy.context
         return int(round(self.get_start_frame(context)))
@@ -300,22 +314,22 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         return int(round(self.get_current_frame(context)))
     # def _set_current_frame(self, value: int) -> None:
     #     pass
-    start_frame: bpy.props.IntProperty(
+    start_frame: Annotated[int, bpy.props.IntProperty(
         name="Start Frame",
         description="Start frame of the video",
         get=_get_start_frame,
         # set=_set_current_frame,
-    ) # type: ignore[call-arg]
-    end_frame: bpy.props.IntProperty(
+    )]
+    end_frame: Annotated[int, bpy.props.IntProperty(
         name="End Frame",
         description="End frame of the video",
         get=_get_end_frame,
-    ) # type: ignore[call-arg]
-    current_frame: bpy.props.IntProperty(
+    )]
+    current_frame: Annotated[int, bpy.props.IntProperty(
         name="Current Frame",
         description="Current frame of the video",
         get=_get_current_frame,
-    ) # type: ignore[call-arg]
+    )]
     # start_frame: bpy.props.IntProperty(
     #     name="Start Frame",
     #     description="Start frame of the video",
@@ -380,87 +394,87 @@ class VideoItemProperties(bpy.types.PropertyGroup):
 
 
 class FlightProperties(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty(
+    name: Annotated[str, bpy.props.StringProperty(
         name="Flight Name",
         description="Name of the flight",
         default="",
-    ) # type: ignore
-    start_timestamp: bpy.props.FloatProperty(
+    )]
+    start_timestamp: Annotated[float, bpy.props.FloatProperty(
         name="Start Timestamp",
         description="Start time of the flight as a UNIX timestamp",
         default=0.0,
-    ) # type: ignore
-    start_time: bpy.props.StringProperty(
+    )]
+    start_time: Annotated[str, bpy.props.StringProperty(
         name="Start Time",
         description="Start time of the flight as an ISO 8601 string",
         default="",
-    ) # type: ignore
-    duration: bpy.props.FloatProperty(
+    )]
+    duration: Annotated[float, bpy.props.FloatProperty(
         name="Duration",
         description="Duration of the flight in seconds",
         default=0.0,
-    ) # type: ignore
-    distance: bpy.props.FloatProperty(
+    )]
+    distance: Annotated[float, bpy.props.FloatProperty(
         name="Distance",
         description="Total distance of the flight in meters",
         subtype='DISTANCE',
         unit='LENGTH',
         default=0.0,
-    ) # type: ignore
-    max_altitude: bpy.props.FloatProperty(
+    )]
+    max_altitude: Annotated[float, bpy.props.FloatProperty(
         name="Max Altitude",
         description="Maximum altitude reached during the flight in meters",
         subtype='DISTANCE',
         unit='LENGTH',
         default=0.0,
-    ) # type: ignore
-    start_latitude: bpy.props.FloatProperty(
+    )]
+    start_latitude: Annotated[float, bpy.props.FloatProperty(
         name="Start Latitude",
         description="Starting latitude of the flight",
         default=0.0,
         precision=6,
-    ) # type: ignore
-    start_longitude: bpy.props.FloatProperty(
+    )]
+    start_longitude: Annotated[float, bpy.props.FloatProperty(
         name="Start Longitude",
         description="Starting longitude of the flight",
         default=0.0,
         precision=6,
-    ) # type: ignore
-    track_items: bpy.props.CollectionProperty(
+    )]
+    track_items: Annotated[CollectionProp[TrackItemProperties], bpy.props.CollectionProperty(
         type=TrackItemProperties,
         name="Track Items",
         description="Collection of track items in the flight",
-    ) # type: ignore
-    video_items: bpy.props.CollectionProperty(
+    )]
+    video_items: Annotated[CollectionProp[VideoItemProperties], bpy.props.CollectionProperty(
         type=VideoItemProperties,
         name="Video Items",
         description="Collection of video items in the flight",
-    ) # type: ignore
+    )]
     # track_items_index: bpy.props.IntProperty(
     #     name="Track Items Index",
     #     description="Index of the active track item",
     #     default=0,
     # ) # type: ignore
-    parent_object: bpy.props.PointerProperty(
+    parent_object: Annotated[bpy.types.Object, bpy.props.PointerProperty(
         name="Parent Object",
         description="Blender object representing the parent of the flight",
         type=bpy.types.Object,
-    ) # type: ignore
-    drone_object: bpy.props.PointerProperty(
+    )]
+    drone_object: Annotated[bpy.types.Object, bpy.props.PointerProperty(
         name="Drone Object",
         description="Blender object representing the drone",
         type=bpy.types.Object,
-    ) # type: ignore
-    gimbal_object: bpy.props.PointerProperty(
+    )]
+    gimbal_object: Annotated[bpy.types.Object, bpy.props.PointerProperty(
         name="Gimbal Object",
         description="Blender object representing the gimbal",
         type=bpy.types.Object,
-    ) # type: ignore
-    flight_path_object: bpy.props.PointerProperty(
+    )]
+    flight_path_object: Annotated[bpy.types.Object, bpy.props.PointerProperty(
         name="Flight Path Object",
         description="Blender object representing the flight path",
         type=bpy.types.Object,
-    ) # type: ignore
+    )]
 
     @classmethod
     def _register_cls(cls) -> None:
@@ -527,7 +541,6 @@ class FlightProperties(bpy.types.PropertyGroup):
                 raise RuntimeError("Too many flights with the same name")
         assert context.scene is not None
         flight = context.scene.autel_flight_logs.add() # type: ignore[attr-defined]
-        flight = cast(FlightProperties, flight)
         flight.name = name
         flight.start_timestamp = data['start_timestamp']
         flight.start_time = data['start_time']
@@ -579,8 +592,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         # return item
 
     def add_video_item(self, item_data: BlVideoItemData) -> VideoItemProperties:
-        item = self.video_items.add() # type: ignore[call-arg]
-        item = cast(VideoItemProperties, item)
+        item = self.video_items.add()
         item.src_filename = item_data.get('src_filename', item_data['filename'])
         # item.filename = item_data['filename']
         item.start_time = item_data['start_time']
@@ -637,7 +649,6 @@ class FlightProperties(bpy.types.PropertyGroup):
             return None
         current_frame = context.scene.frame_current
         for item in self.video_items:
-            item = cast(VideoItemProperties, item)
             start_frame = round(item.get_start_frame(context))
             end_frame = round(item.get_end_frame(context))
             if start_frame <= current_frame <= end_frame:
@@ -648,7 +659,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        video_items = cast(Iterable[VideoItemProperties], self.video_items)
+        video_items = self.video_items
         future_items = [item for item in video_items if item.get_start_frame(context) > current_frame]
         if not future_items:
             return None
@@ -659,7 +670,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        video_items = cast(Iterable[VideoItemProperties], self.video_items)
+        video_items = self.video_items
         past_items = [item for item in video_items if item.get_end_frame(context) < current_frame]
         if not past_items:
             return None
@@ -847,7 +858,6 @@ def animate_objects(
         clear_all_keyframes(flight_props.gimbal_object)
     try:
         for item in flight_props.track_items:
-            item = cast(TrackItemProperties, item)
             frame = item.frame
             scene.frame_set(frame=int(frame), subframe=frame % 1)
             if item.has_location:
@@ -1058,12 +1068,12 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
     bl_label = "Import Autel Flight Log"
     bl_options = {'REGISTER', 'UNDO'}
 
-    filepath: bpy.props.StringProperty(
+    filepath: Annotated[str, bpy.props.StringProperty(
         name="File Path",
         description="Filepath used for importing the flight log file",
         maxlen=1024,
         subtype='FILE_PATH',
-    )   # type: ignore
+    )]
 
     @classmethod
     def _register_cls(cls) -> None:
