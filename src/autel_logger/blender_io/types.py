@@ -76,6 +76,8 @@ class BlVideoItemData(TypedDict):
     end_time: float  # seconds since start of flight
     duration: float  # in seconds
     location: BlLatLon
+    exists_locally: bool
+    frame_rate: float|None
 
 class BlImageItemData(TypedDict):
     filename: str
