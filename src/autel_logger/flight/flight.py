@@ -186,6 +186,7 @@ class Flight(NamedTuple):
             logger.info(f"Matched video file {item.filename} to {best.item.filename} with confidence {best.confidence:.2f}")
             item.local_filename = best.item.filename
             item.fps = best.item.fps
+            item.duration = best.item.duration
             changed = True
         return changed
 
