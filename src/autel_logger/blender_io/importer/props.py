@@ -468,6 +468,15 @@ class FlightProperties(bpy.types.PropertyGroup):
         return None
 
     @classmethod
+    def get_selected_flight(cls, context: bpy.types.Context) -> FlightProperties | None:
+        scene = context.scene
+        if scene is None:
+            return None
+        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[attr-defined]
+        selected_flight = cls.get_flight_by_name(context, selected_flight_name) if selected_flight_name else None
+        return selected_flight
+
+    @classmethod
     def flight_exists(cls, context: bpy.types.Context, name: str) -> bool:
         return cls.get_flight_by_name(context, name) is not None
 

@@ -67,8 +67,7 @@ def animate_objects(
 
 
 def next_prev_item_helper(context: bpy.types.Context, item_type: Literal['TRACK', 'VIDEO'], direction: Literal['NEXT', 'PREV']) -> set[str]:
-    selected_flight_name = context.scene.autel_flight_logs_selected_name # type: ignore[assigned]
-    selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+    selected_flight = FlightProperties.get_selected_flight(context)
     if selected_flight is None:
         return {'CANCELLED'}
     if item_type == 'TRACK':
@@ -101,11 +100,7 @@ class SCENE_OT_autel_flight_log_next_item(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene = context.scene
-        if scene is None:
-            return False
-        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -127,11 +122,7 @@ class SCENE_OT_autel_flight_log_prev_item(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene = context.scene
-        if scene is None:
-            return False
-        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -154,11 +145,7 @@ class SCENE_OT_autel_flight_log_next_video_item(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene = context.scene
-        if scene is None:
-            return False
-        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -181,11 +168,7 @@ class SCENE_OT_autel_flight_log_prev_video_item(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene = context.scene
-        if scene is None:
-            return False
-        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
@@ -209,16 +192,11 @@ class SCENE_OT_autel_flight_log_update_animation(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        scene = context.scene
-        if scene is None:
-            return False
-        selected_flight_name = scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         return selected_flight is not None
 
     def execute(self, context: bpy.types.Context) -> set[str]:
-        selected_flight_name = context.scene.autel_flight_logs_selected_name # type: ignore[assigned]
-        selected_flight = FlightProperties.get_flight_by_name(context, selected_flight_name)
+        selected_flight = FlightProperties.get_selected_flight(context)
         if selected_flight is None:
             self.report({'WARNING'}, "No flight log selected")
             return {'CANCELLED'}
