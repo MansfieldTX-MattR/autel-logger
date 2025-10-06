@@ -11,6 +11,7 @@ from loguru import logger
 from ..spatial import LatLon, LatLonAlt, GeoBox, PositionMeters, Vector3D, Speed, Orientation
 from ..parser.model import (
     ModelResult, ParsedOutFull, ParsedInFull, ParsedVideo, ParsedImage, FlightControl,
+    RadarInfo, RCInfo, BatteryInfo,
 )
 from ..config import Config
 from .media import VideoCacheData
@@ -201,6 +202,9 @@ class TrackItem(NamedTuple):
     relative_location: PositionMeters|None  # in meters from start location
     distance: float|None  # in meters from start location
     flight_controls: FlightControl
+    battery: BatteryInfo
+    radar: RadarInfo
+    rc_info: RCInfo
 
     class SerializeTD(TypedDict):
         index: int
@@ -214,6 +218,9 @@ class TrackItem(NamedTuple):
         relative_location: PositionMeters.SerializeTD|None
         distance: float|None
         flight_controls: FlightControl.SerializeTD
+        battery: BatteryInfo.SerializeTD
+        radar: RadarInfo.SerializeTD
+        rc_info: RCInfo.SerializeTD
 
     @classmethod
     def from_parsed(
@@ -251,6 +258,9 @@ class TrackItem(NamedTuple):
             relative_location=relative_location,
             distance=distance,
             flight_controls=parsed.flight_control.with_offset(),
+            battery=parsed.battery_info,
+            radar=parsed.radar_info,
+            rc_info=parsed.rc_info,
         )
 
     def serialize(self) -> SerializeTD:
@@ -266,6 +276,9 @@ class TrackItem(NamedTuple):
             'relative_location': None if self.relative_location is None else self.relative_location.serialize(),
             'distance': self.distance,
             'flight_controls': self.flight_controls.serialize(),
+            'battery': self.battery.serialize(),
+            'radar': self.radar.serialize(),
+            'rc_info': self.rc_info.serialize(),
         }
 
     @classmethod
@@ -282,6 +295,9 @@ class TrackItem(NamedTuple):
             relative_location=None if data['relative_location'] is None else PositionMeters.deserialize(data['relative_location']),
             distance=data['distance'],
             flight_controls=FlightControl.deserialize(data['flight_controls']),
+            battery=BatteryInfo.deserialize(data['battery']),
+            radar=RadarInfo.deserialize(data['radar']),
+            rc_info=RCInfo.deserialize(data['rc_info']),
         )
 
 @dataclass

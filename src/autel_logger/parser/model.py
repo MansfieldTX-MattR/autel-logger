@@ -48,6 +48,50 @@ class BatteryInfo(NamedTuple):
     cell_voltages: list[float]
     """Cell voltages in VDC"""
 
+    class SerializeTD(TypedDict):
+        state: int|None
+        design_volume: float
+        full_charge_volume: float
+        current_electricity: float
+        current_voltage: float
+        current_current: float
+        remain_power_percent: float
+        temperature: float
+        discharge_count: int
+        cell_count: int
+        cell_voltages: list[float]
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            state=self.state,
+            design_volume=self.design_volume,
+            full_charge_volume=self.full_charge_volume,
+            current_electricity=self.current_electricity,
+            current_voltage=self.current_voltage,
+            current_current=self.current_current,
+            remain_power_percent=self.remain_power_percent,
+            temperature=self.temperature,
+            discharge_count=self.discharge_count,
+            cell_count=self.cell_count,
+            cell_voltages=self.cell_voltages,
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            state=data['state'],
+            design_volume=data['design_volume'],
+            full_charge_volume=data['full_charge_volume'],
+            current_electricity=data['current_electricity'],
+            current_voltage=data['current_voltage'],
+            current_current=data['current_current'],
+            remain_power_percent=data['remain_power_percent'],
+            temperature=data['temperature'],
+            discharge_count=data['discharge_count'],
+            cell_count=data['cell_count'],
+            cell_voltages=data['cell_voltages'],
+        )
+
     @classmethod
     def from_dict(cls, data: HasBatteryInfoTD) -> Self:
         count = data['cell_count']
@@ -284,6 +328,29 @@ class RCInfo(NamedTuple):
     offline_duration: float
     button_state: int
     signal_strength: int
+
+    class SerializeTD(TypedDict):
+        mode: int
+        offline_duration: float
+        button_state: int
+        signal_strength: int
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            mode=self.mode,
+            offline_duration=self.offline_duration,
+            button_state=self.button_state,
+            signal_strength=self.signal_strength,
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            mode=data['mode'],
+            offline_duration=data['offline_duration'],
+            button_state=data['button_state'],
+            signal_strength=data.get('signal_strength'),
+        )
 
     @classmethod
     def from_dict(cls, data: HasRCFullInfoTD) -> Self:
