@@ -237,6 +237,8 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         start_frame: int
         end_frame: int
         current_frame: int
+        frame_rate: float|None
+        exists_locally: bool
     else:
         src_filename: bpy.props.StringProperty(
             name="Source Filename",
@@ -303,6 +305,16 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             name="Current Frame",
             description="Current frame of the video",
             get=_get_current_frame,
+        )
+        frame_rate: bpy.props.FloatProperty(
+            name="Frame Rate",
+            description="Frame rate of the video in frames per second",
+            default=0.0,
+        )
+        exists_locally: bpy.props.BoolProperty(
+            name="Exists Locally",
+            description="Whether the video file exists locally",
+            default=False,
         )
 
     def get_start_frame(self, context: bpy.types.Context) -> float:
@@ -525,6 +537,8 @@ class FlightProperties(bpy.types.PropertyGroup):
         item.duration = item_data['duration']
         item.latitude = item_data['location']['latitude']
         item.longitude = item_data['location']['longitude']
+        item.frame_rate = item_data['frame_rate'] or 0.0
+        item.exists_locally = item_data['exists_locally']
         return item
 
     def update_item_times(self, context: bpy.types.Context) -> None:

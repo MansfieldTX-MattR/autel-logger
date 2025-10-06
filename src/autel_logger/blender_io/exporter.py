@@ -79,12 +79,17 @@ def build_track_items_data(flight: Flight) -> list[BlTrackItemData]:
 def build_media_items_data(flight: Flight) -> tuple[list[BlVideoItemData], list[BlImageItemData]]:
     video_items = []
     for item in flight.video_items:
+        fps = None
+        if item.fps is not None:
+            fps = float(item.fps)
         video_items.append(BlVideoItemData(
             filename=str(item.local_filename if item.local_filename is not None else item.filename),
             start_time=item.start_time_offset,
             end_time=item.end_time_offset,
             duration=item.duration.total_seconds(),
             location=item.location.serialize(),
+            frame_rate=fps,
+            exists_locally=item.local_filename is not None and item.local_filename.exists(),
         ))
     image_items = []
     for item in flight.image_items:

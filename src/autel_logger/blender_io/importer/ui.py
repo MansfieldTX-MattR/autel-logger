@@ -72,6 +72,8 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
                 box.prop(video_item, "start_time")
                 box.prop(video_item, "end_time")
                 box.prop(video_item, "duration")
+                box.prop(video_item, "frame_rate")
+                box.prop(video_item, "exists_locally")
                 box.prop(video_item, "latitude")
                 box.prop(video_item, "longitude")
                 box.prop(video_item, "start_frame")
