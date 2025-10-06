@@ -23,28 +23,50 @@ if TYPE_CHECKING:
 
 
 class BatteryInfo(NamedTuple):
+    """Battery information for the drone
+    """
+    state: int|None
+    """Battery state"""
     design_volume: float
-    full_charge_volume: float|None
-    current_electricity: float|None
-    current_voltage: float|None
-    remain_power_percent: float|None
-    temperature: float|None
-    discharge_count: int|None
-    cell_count: int|None
-    cell_voltages: list[float]|None
+    """"""
+    full_charge_volume: float
+    """Full charge volume in mAh"""
+    current_electricity: float
+    """Current electricity use in Watts"""
+    current_voltage: float
+    """Current voltage in VDC"""
+    current_current: float
+    """Current current in Amps"""
+    remain_power_percent: float
+    """Remaining battery power percentage"""
+    temperature: float
+    """Battery temperature in Celsius"""
+    discharge_count: int
+    """Number of discharges"""
+    cell_count: int
+    """Number of cells in the battery"""
+    cell_voltages: list[float]
+    """Cell voltages in VDC"""
 
     @classmethod
     def from_dict(cls, data: HasBatteryInfoTD) -> Self:
+        count = data['cell_count']
+        voltages = data['cell_voltages']
+        if len(voltages) != count:
+            voltages = voltages[:count]
+        voltages = [v / 1000 for v in voltages]                     # mV to V
         return cls(
+            state=data.get('battery_state'),
             design_volume=data['design_volume'],
-            full_charge_volume=data.get('full_charge_volume'),
-            current_electricity=data.get('current_electricity'),
-            current_voltage=data.get('current_voltage'),
-            remain_power_percent=data.get('remain_power_percent'),
-            temperature=data.get('temperature'),
-            discharge_count=data.get('discharge_count'),
-            cell_count=data.get('cell_count'),
-            cell_voltages=data.get('cell_voltages'),
+            full_charge_volume=data['full_charge_volume'],
+            current_electricity=data['current_electricity'] / 1000, # mW to W
+            current_voltage=data['current_voltage'] / 1000,         # mV to V
+            current_current=abs(data['current_current']) / 1000,    # mA to A
+            remain_power_percent=data['remain_power_percent'],
+            temperature=data['battery_temperature'],
+            discharge_count=data['number_of_discharges'],
+            cell_count=count,
+            cell_voltages=voltages,
         )
 
 

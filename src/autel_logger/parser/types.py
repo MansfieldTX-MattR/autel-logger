@@ -335,16 +335,16 @@ class HasDronePositionTD(TypedDict):
 
 class HasBatteryInfoTD(TypedDict):
     design_volume: float
-    full_charge_volume: NotRequired[float]
-    current_electricity: NotRequired[float]
-    current_voltage: NotRequired[float]
-    current_current: NotRequired[float]
-    remain_power_percent: NotRequired[float]
-    battery_temperature: NotRequired[float]
+    full_charge_volume: float
+    current_electricity: float
+    current_voltage: float
+    current_current: float
+    remain_power_percent: float
+    battery_temperature: float
     battery_state: NotRequired[int]
-    number_of_discharges: NotRequired[int]
+    number_of_discharges: int
     cell_count: int
-    cell_voltages: NotRequired[list[float]]
+    cell_voltages: list[float]
 
 
 class HasMLeftRightTD(TypedDict):
