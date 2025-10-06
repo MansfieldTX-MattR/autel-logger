@@ -13,7 +13,7 @@ from .types import (
     RecordTypeName, ParsedInBaseTD, ParsedInFullTD, ParsedOutBaseTD, ParsedOutFullTD,
     ParsedHeadTD, ParsedVideoTD, ParsedImageTD, ParseFlightRecordTD, ParseMediaTD,
     HasBatteryInfoTD, HasDroneWarningTD, HasGoHomeInfoTD, HasRadarInfoTD,
-    HasRCModeInfoTD, HasMLeftRightTD,
+    HasRCFullInfoTD, HasMLeftRightTD,
     FlightRecordTypeName, MediaRecordTypeName,
 )
 from ..spatial import LatLon, LatLonAlt, Vector3D, Speed, Orientation
@@ -261,15 +261,15 @@ class RCInfo(NamedTuple):
     mode: int
     offline_duration: float
     button_state: int
-    signal_strength: int|None
+    signal_strength: int
 
     @classmethod
-    def from_dict(cls, data: HasRCModeInfoTD) -> Self:
+    def from_dict(cls, data: HasRCFullInfoTD) -> Self:
         return cls(
             mode=data['rc_mode_state'],
             offline_duration=data['offline_duration'],
             button_state=data['rc_button_state'],
-            signal_strength=None,
+            signal_strength=data['rcRSSI'],
         )
 
 
@@ -409,7 +409,6 @@ class ParsedInBase[
     drone_orientation: Orientation[Literal['degrees']]
     flight_control: FlightControl
     radar_info: RadarInfo
-    rc_info: RCInfo
 
     drone_altitude: float
     phone_heading: float
@@ -437,7 +436,6 @@ class ParsedInBase[
                 StickPosition(data['m_right_horizontal'], data['m_right_vertical']),
             ),
             radar_info=RadarInfo.from_dict(data),
-            rc_info=RCInfo.from_dict(data),
             phone_heading=data['phone_heading'],
             param_1=data['param_1'],
             param_2=data['param_2'],
@@ -448,10 +446,10 @@ class ParsedInBase[
 class ParsedInFull(ParsedInBase[Literal['in_full'], ParsedInFullTD]):
     battery_info: BatteryInfo
     warnings: Warnings
+    rc_info: RCInfo
 
     flight_mode: int
     camera_mode: int
-    rcRSSI: int
     m_mode: int
     time_left: float
     max_flight_altitude: float
@@ -480,7 +478,7 @@ class ParsedInFull(ParsedInBase[Literal['in_full'], ParsedInFullTD]):
             warnings=Warnings.from_dict(data),
             flight_mode=data['flight_mode'],
             camera_mode=data['camera_mode'],
-            rcRSSI=data['rcRSSI'],
+            rc_info=RCInfo.from_dict(data),
             m_mode=data['m_mode'],
             time_left=data['time_left'],
             max_flight_altitude=data['max_flight_altitude'],
@@ -509,7 +507,6 @@ class ParsedOutBase[
     drone_orientation: Orientation
     flight_control: FlightControl
     radar_info: RadarInfo
-    rc_info: RCInfo
 
     param_1: int
     param_2: int
@@ -540,7 +537,6 @@ class ParsedOutBase[
             ).to_degrees(),
             flight_control=FlightControl.from_dict(data),
             radar_info=RadarInfo.from_dict(data),
-            rc_info=RCInfo.from_dict(data),
             param_1=data['param_1'],
             param_2=data['param_2'],
         )
@@ -551,13 +547,13 @@ class ParsedOutFull(ParsedOutBase[Literal['out_full'], ParsedOutFullTD]):
     warnings: Warnings
     go_home_info: GoHomeInfo
     battery_info: BatteryInfo
+    rc_info: RCInfo
 
     phone_heading: float
     flight_mode: int
     camera_mode: int
     gps_signal_level: int
     beginner_mode: bool
-    rcRSSI: int
     m_mode: int
     max_flight_radius: float
     max_flight_horizontal_speed: float
@@ -588,7 +584,7 @@ class ParsedOutFull(ParsedOutBase[Literal['out_full'], ParsedOutFullTD]):
             camera_mode=data['camera_mode'],
             gps_signal_level=data['gps_signal_level'],
             beginner_mode=data['beginner_mode_enable'] == 1,
-            rcRSSI=data['rcRSSI'],
+            rc_info=RCInfo.from_dict(data),
             m_mode=data['m_mode'],
             max_flight_radius=data['max_flight_radius'],
             max_flight_horizontal_speed=data['max_flight_horizontal_speed'],

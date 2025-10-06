@@ -392,6 +392,9 @@ class HasRCModeInfoTD(TypedDict):
     offline_duration: float
     rc_button_state: int
 
+class HasRCFullInfoTD(HasRCModeInfoTD):
+    rcRSSI: int
+
 
 class HasCurTimeTD(TypedDict):
     current_time: float
@@ -420,13 +423,12 @@ class ParsedOutBaseTD(
 class ParsedOutFullTD(
     HasCurTimeTD, HasDronePositionTD, HasXYZSpeedTD, HasGimbalTD,
     HasDroneOrientationTD, HasMLeftRightTD, HasRadarInfoTD,
-    HasBatteryInfoTD, HasDroneWarningTD, HasGoHomeInfoTD, HasRCModeInfoTD
+    HasBatteryInfoTD, HasDroneWarningTD, HasGoHomeInfoTD, HasRCFullInfoTD
 ):
     phone_heading: float
     flight_mode: int
     camera_mode: int
     gps_signal_level: int
-    rcRSSI: int
     m_mode: int
     beginner_mode_enable: int
     max_flight_radius: float
@@ -443,13 +445,12 @@ class ParsedOutFullTD(
 class ParsedInFullTD(
     HasCurTimeTD, HasXYZSpeedTD, HasGimbalTD,
     HasDroneOrientationTD, HasMLeftRightTD, HasRadarInfoTD,
-    HasBatteryInfoTD, HasDroneWarningTD, HasRCModeInfoTD
+    HasBatteryInfoTD, HasDroneWarningTD, HasRCFullInfoTD
 ):
     drone_altitude: float
     phone_heading: float
     flight_mode: int
     camera_mode: int
-    rcRSSI: int
     m_mode: int
     time_left: float
     max_flight_altitude: float
