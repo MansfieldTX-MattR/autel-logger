@@ -156,7 +156,7 @@ class FlightControl(NamedTuple):
 
 
 class RadarInfo(NamedTuple):
-    timestamp: datetime.datetime
+    timestamp: float
     front: int
     rear: int
     left: int
@@ -165,7 +165,7 @@ class RadarInfo(NamedTuple):
     bottom: int
 
     class SerializeTD(TypedDict):
-        timestamp: str
+        timestamp: float
         front: int
         rear: int
         left: int
@@ -175,7 +175,7 @@ class RadarInfo(NamedTuple):
 
     def serialize(self) -> SerializeTD:
         return self.SerializeTD(
-            timestamp=self.timestamp.isoformat(),
+            timestamp=self.timestamp,
             front=self.front,
             rear=self.rear,
             left=self.left,
@@ -187,7 +187,7 @@ class RadarInfo(NamedTuple):
     @classmethod
     def deserialize(cls, data: SerializeTD) -> Self:
         return cls(
-            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
+            timestamp=data['timestamp'],
             front=data['front'],
             rear=data['rear'],
             left=data['left'],
@@ -199,7 +199,7 @@ class RadarInfo(NamedTuple):
     @classmethod
     def from_dict(cls, data: HasRadarInfoTD) -> Self:
         return cls(
-            timestamp=datetime.datetime.fromtimestamp(data['radar_info_timestamp'] / 1000),
+            timestamp=data['radar_info_timestamp'],
             front=data['front_radar_info'],
             rear=data['rear_radar_info'],
             left=data['left_radar_info'],
