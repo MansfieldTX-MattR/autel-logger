@@ -253,6 +253,10 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         self.frame = timestamp_to_frame(self.scene_time, context, as_int=True)
         self.name = str(self.frame)
 
+    def on_scene_frame_change(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
+        """Update any properties based on the scene frame change"""
+        pass
+
     @classmethod
     def from_track_item_data(
         cls,
@@ -394,11 +398,38 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             type=bpy.types.Image,
         )
 
+    def get_camera_background(self, flight: FlightProperties) -> bpy.types.CameraBackgroundImage|None:
+        if self.image_object is None:
+            return None
+        if flight.camera_object is None:
+            return None
+        camera = flight.camera_object.data
+        if not isinstance(camera, bpy.types.Camera):
+            return None
+        for bg in camera.background_images:
+            if bg.image == self.image_object:
+                return bg
+        return None
+
     def on_scene_fps_change(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         """Update start_frame and end_frame when scene fps changes"""
         self.start_frame = int(round(self.get_start_frame(context)))
         self.end_frame = int(round(self.get_end_frame(context)))
         self.name = str(self.start_frame)
+
+    def on_scene_frame_change(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
+        """Update current_frame when scene frame changes"""
+        scene = context.scene if isinstance(context, bpy.types.Context) else context
+        if scene is None:
+            return
+        bg = self.get_camera_background(parent)
+        if bg is None:
+            return
+        is_current = self.start_frame <= scene.frame_current <= self.end_frame
+        if is_current:
+            bg.alpha = 0.5
+        else:
+            bg.alpha = 0.0
 
     def get_start_frame(self, context: bpy.types.Context|bpy.types.Scene) -> float:
         return timestamp_to_frame(self.start_time, context)
@@ -655,6 +686,12 @@ class FlightProperties(bpy.types.PropertyGroup):
     def on_scene_fps_changed(instance: FlightProperties, scene: bpy.types.Scene) -> None:
         instance.update_item_times(scene)
 
+    def on_scene_frame_change(self, scene: bpy.types.Scene) -> None:
+        for item in self.track_items:
+            item.on_scene_frame_change(scene, self)
+        for item in self.video_items:
+            item.on_scene_frame_change(scene, self)
+
     def update_item_times(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         for item in self.track_items:
             item.on_scene_fps_change(context)
@@ -753,6 +790,13 @@ def register_classes() -> None:
         for scene in bpy.data.scenes:
             FlightProperties.subscribe_all_flights_to_scene_fps(scene)
     bpy.app.handlers.load_post.append(on_load_post)
+
+    @persistent
+    def on_frame_change_pre(scene: bpy.types.Scene) -> None:
+        for flight in scene.autel_flight_logs: # type: ignore[attr-defined]
+            flight.on_scene_frame_change(scene)
+    bpy.app.handlers.frame_change_pre.append(on_frame_change_pre)
+
 
 
 
