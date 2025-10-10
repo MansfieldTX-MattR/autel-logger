@@ -12,6 +12,7 @@ from .operators import (
     SCENE_OT_autel_flight_log_prev_item,
     SCENE_OT_autel_flight_log_next_video_item,
     SCENE_OT_autel_flight_log_prev_video_item,
+    SCENE_OT_autel_flight_log_import_video,
 )
 from .ui import OBJECT_PT_flight_log_panel
 
@@ -49,6 +50,7 @@ def register() -> None:
     SCENE_OT_autel_flight_log_prev_item._register_cls()
     SCENE_OT_autel_flight_log_next_video_item._register_cls()
     SCENE_OT_autel_flight_log_prev_video_item._register_cls()
+    SCENE_OT_autel_flight_log_import_video._register_cls()
     OBJECT_PT_flight_log_panel._register_cls()
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
@@ -67,6 +69,7 @@ def unregister() -> None:
         SCENE_OT_autel_flight_log_prev_item._unregister_cls()
         SCENE_OT_autel_flight_log_next_video_item._unregister_cls()
         SCENE_OT_autel_flight_log_prev_video_item._unregister_cls()
+        SCENE_OT_autel_flight_log_import_video._unregister_cls()
     except Exception as e:
         print(f"Error during unregister: {e}")
 

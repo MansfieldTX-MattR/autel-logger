@@ -280,6 +280,7 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         current_frame: int
         frame_rate: float|None
         exists_locally: bool
+        image_object: bpy.types.Image|None
     else:
         src_filename: bpy.props.StringProperty(
             name="Source Filename",
@@ -356,6 +357,11 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             name="Exists Locally",
             description="Whether the video file exists locally",
             default=False,
+        )
+        image_object: bpy.props.PointerProperty(
+            name="Image Object",
+            description="Blender object representing the video image",
+            type=bpy.types.Image,
         )
 
     def get_start_frame(self, context: bpy.types.Context) -> float:

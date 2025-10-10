@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ..types import *
 
 from .props import (
-    FlightProperties, FlightPathVertexProperties,
+    FlightProperties, VideoItemProperties, FlightPathVertexProperties,
     CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
 )
 
@@ -183,6 +183,102 @@ class SCENE_OT_autel_flight_log_prev_video_item(bpy.types.Operator):
     def _unregister_cls(cls) -> None:
         bpy.utils.unregister_class(cls)
 
+class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
+    """Import video files for the selected flight log"""
+    bl_idname = "scene.autel_flight_log_import_video"
+    bl_label = "Import Flight Log Video"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        current_video, err_msg = cls._get_current_video(context)
+        if current_video is None:
+            return False
+        if not current_video.exists_locally:
+            return False
+        if current_video.image_object is not None:
+            return False
+        return True
+
+    @classmethod
+    def _get_current_video(cls, context: bpy.types.Context) -> tuple[VideoItemProperties | None, str]:
+        selected_flight = FlightProperties.get_selected_flight(context)
+        if selected_flight is None:
+            return None, "No flight log selected"
+        current_video = selected_flight.get_current_video_item(context)
+        if current_video is None:
+            return None, "No video item at current frame"
+        return current_video, ""
+
+    @classmethod
+    def _can_import_video(cls, context: bpy.types.Context, current_video: VideoItemProperties) -> tuple[bool, str]:
+        if not current_video.exists_locally:
+            return False, "Video item does not exist locally"
+        if current_video.image_object is not None:
+            return False, "Video item already has an image object"
+        assert context.scene is not None
+        if current_video.frame_rate != context.scene.render.fps:
+            return False, "Video item frame rate does not match scene frame rate"
+        video_path = Path(current_video.src_filename)
+        if not video_path.exists():
+            return False, f"Video file does not exist: {video_path}"
+        scene = context.scene
+        if scene is None:
+            return False, "No active scene"
+        if current_video.frame_rate != scene.render.fps:
+            return False, "Video item frame rate does not match scene frame rate"
+        return True, ""
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        current_video, err_msg = self._get_current_video(context)
+        if current_video is None:
+            self.report({'WARNING'}, err_msg)
+            return {'CANCELLED'}
+        can_import, err_msg = self._can_import_video(context, current_video)
+        if not can_import:
+            self.report({'WARNING'}, err_msg)
+            return {'CANCELLED'}
+        video_path = Path(current_video.src_filename)
+        assert video_path.exists()
+        selected_flight = FlightProperties.get_selected_flight(context)
+        assert selected_flight is not None
+        try:
+            image = bpy.data.images.load(filepath=str(video_path), check_existing=True)
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to load video file: {e}")
+            return {'CANCELLED'}
+        current_video.image_object = image
+        self.report({'INFO'}, f"Imported video file: {video_path.name}")
+
+        camera = selected_flight.camera_object
+        if camera is None:
+            self.report({'WARNING'}, "No camera object found in flight properties")
+            return {'CANCELLED'}
+        assert isinstance(camera.data, bpy.types.Camera)
+        camera.data.show_background_images = True
+        bg = camera.data.background_images.new()
+        bg.image = image
+        bg.display_depth = 'FRONT'
+        bg.frame_method = 'CROP'
+        bg.alpha = 0.5
+        start_frame = current_video.get_start_frame(context)
+        end_frame = current_video.get_end_frame(context)
+        num_frames = end_frame - start_frame
+        if num_frames <= 0:
+            self.report({'WARNING'}, "Video item has invalid frame range")
+            return {'CANCELLED'}
+        bg.image_user.frame_start = int(round(start_frame))
+        bg.image_user.frame_duration = int(round(num_frames))
+        bg.image_user.frame_offset = 0
+        return {'FINISHED'}
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
 
 
 class SCENE_OT_autel_flight_log_update_animation(bpy.types.Operator):

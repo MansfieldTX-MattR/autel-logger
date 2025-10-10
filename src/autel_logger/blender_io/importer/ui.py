@@ -15,6 +15,7 @@ from .operators import (
     SCENE_OT_autel_flight_log_prev_item,
     SCENE_OT_autel_flight_log_next_video_item,
     SCENE_OT_autel_flight_log_prev_video_item,
+    SCENE_OT_autel_flight_log_import_video,
 )
 
 
@@ -69,6 +70,7 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             if video_item is not None:
                 box.prop(video_item, "src_filename")
                 box.prop(video_item, "filename")
+                box.prop(video_item, "image_object")
                 box.prop(video_item, "start_time")
                 box.prop(video_item, "end_time")
                 box.prop(video_item, "duration")
@@ -79,6 +81,7 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
                 box.prop(video_item, "start_frame")
                 box.prop(video_item, "end_frame")
                 box.prop(video_item, "current_frame")
+                box.operator(SCENE_OT_autel_flight_log_import_video.bl_idname, text="Import Video")
 
             item = selected_flight.get_current_track_item(context)
             box = layout.box()
