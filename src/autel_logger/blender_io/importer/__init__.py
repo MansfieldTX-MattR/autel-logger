@@ -1,6 +1,13 @@
+_needs_reload = "bpy" in locals()
 
 import bpy
 
+from . import props, operators, ui
+if _needs_reload:
+    import importlib
+    importlib.reload(props)
+    importlib.reload(operators)
+    importlib.reload(ui)
 
 from .props import (
     FlightProperties, TrackItemProperties, VideoItemProperties, FlightPathVertexProperties,
