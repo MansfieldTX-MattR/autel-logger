@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Self, Literal, TYPE_CHECKING, overload
+from typing import TypeVar, Generic, Self, Literal, Callable, TYPE_CHECKING, overload
 import datetime
 from pathlib import Path
 import math
@@ -661,23 +661,37 @@ class FlightProperties(bpy.types.PropertyGroup):
         for item in self.video_items:
             item.on_scene_fps_change(context)
 
-    @property
-    def items_by_frame(self) -> dict[int, TrackItemProperties]:
-        return {item.frame: item for item in self.track_items}
+    def get_items_by_frame(
+        self, compare: Callable[[int], bool]|None = None
+    ) -> dict[int, TrackItemProperties]:
+        if compare is None:
+            compare = lambda f: True
+        return {
+            int(key): value for key, value in self.track_items.items() if compare(int(key))
+        }
+
+    def get_video_items_by_start_frame(
+        self, compare: Callable[[int], bool]|None = None
+    ) -> dict[int, VideoItemProperties]:
+        if compare is None:
+            compare = lambda f: True
+        return {
+            round(float(key)): value for key, value in self.video_items.items()
+            if compare(round(float(key)))
+        }
 
     def get_current_track_item(self, context: bpy.types.Context) -> TrackItemProperties | None:
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        items_by_frame = self.items_by_frame
+        items_by_frame = self.get_items_by_frame()
         return items_by_frame.get(current_frame, None)
 
     def get_next_track_item(self, context: bpy.types.Context) -> TrackItemProperties | None:
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        items_by_frame = self.items_by_frame
-        items_by_frame = {k: v for k, v in items_by_frame.items() if k > current_frame}
+        items_by_frame = self.get_items_by_frame(lambda f: f > current_frame)
         if not items_by_frame:
             return None
         next_frame = min(items_by_frame.keys())
@@ -687,8 +701,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        items_by_frame = self.items_by_frame
-        items_by_frame = {k: v for k, v in items_by_frame.items() if k < current_frame}
+        items_by_frame = self.get_items_by_frame(lambda f: f < current_frame)
         if not items_by_frame:
             return None
         prev_frame = max(items_by_frame.keys())
@@ -698,34 +711,35 @@ class FlightProperties(bpy.types.PropertyGroup):
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        for item in self.video_items:
-            start_frame = round(item.get_start_frame(context))
-            end_frame = round(item.get_end_frame(context))
-            if start_frame <= current_frame <= end_frame:
-                return item
+        video_items = self.get_video_items_by_start_frame(lambda f: f <= current_frame)
+        if not video_items:
+            return None
+        latest_start_frame = max(video_items.keys())
+        item = video_items[latest_start_frame]
+        end_frame = item.get_end_frame(context)
+        if latest_start_frame <= current_frame <= end_frame:
+            return item
         return None
 
     def get_next_video_item(self, context: bpy.types.Context) -> VideoItemProperties | None:
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        video_items = self.video_items
-        future_items = [item for item in video_items if item.get_start_frame(context) > current_frame]
-        if not future_items:
+        video_items = self.get_video_items_by_start_frame(lambda f: f > current_frame)
+        if not video_items:
             return None
-        next_item = min(future_items, key=lambda item: item.get_start_frame(context))
-        return next_item
+        next_start_frame = min(video_items.keys())
+        return video_items[next_start_frame]
 
     def get_previous_video_item(self, context: bpy.types.Context) -> VideoItemProperties | None:
         if context.scene is None:
             return None
         current_frame = context.scene.frame_current
-        video_items = self.video_items
-        past_items = [item for item in video_items if item.get_end_frame(context) < current_frame]
-        if not past_items:
+        video_items = self.get_video_items_by_start_frame(lambda f: f < current_frame)
+        if not video_items:
             return None
-        prev_item = max(past_items, key=lambda item: item.get_end_frame(context))
-        return prev_item
+        prev_start_frame = max(video_items.keys())
+        return video_items[prev_start_frame]
 
 
 
