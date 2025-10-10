@@ -401,6 +401,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         drone_object: bpy.types.Object
         gimbal_object: bpy.types.Object
         flight_path_object: bpy.types.Object
+        camera_object: bpy.types.Object
     else:
         name: bpy.props.StringProperty(
             name="Flight Name",
@@ -480,6 +481,11 @@ class FlightProperties(bpy.types.PropertyGroup):
         flight_path_object: bpy.props.PointerProperty(
             name="Flight Path Object",
             description="Blender object representing the flight path",
+            type=bpy.types.Object,
+        )
+        camera_object: bpy.props.PointerProperty(
+            name="Camera Object",
+            description="Blender object representing the camera",
             type=bpy.types.Object,
         )
 
