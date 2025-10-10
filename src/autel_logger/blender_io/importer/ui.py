@@ -89,6 +89,8 @@ class OBJECT_PT_flight_log_video_panel(bpy.types.Panel):
         box.prop(video_item, "src_filename")
         box.prop(video_item, "filename")
         box.prop(video_item, "image_object")
+        box.operator(SCENE_OT_autel_flight_log_import_video.bl_idname, text="Import Video")
+        box.separator()
         box.prop(video_item, "start_time")
         box.prop(video_item, "end_time")
         box.prop(video_item, "duration")
@@ -99,7 +101,6 @@ class OBJECT_PT_flight_log_video_panel(bpy.types.Panel):
         box.prop(video_item, "start_frame")
         box.prop(video_item, "end_frame")
         box.prop(video_item, "current_frame")
-        box.operator(SCENE_OT_autel_flight_log_import_video.bl_idname, text="Import Video")
 
 
 class OBJECT_PT_flight_log_track_panel(bpy.types.Panel):
