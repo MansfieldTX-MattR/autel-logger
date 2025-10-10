@@ -60,6 +60,47 @@ def frame_to_timestamp(frame: int|float, context: bpy.types.Context|None = None)
     return delta
 
 
+class FlightPathVertexProperties(bpy.types.PropertyGroup):
+    _DATA_PROPERTY_NAME = "autel_flight_path_vertex_props"
+    if TYPE_CHECKING:
+        vertex_index: int
+        flight_time: float
+        frame: float
+    else:
+        def _get_frame(self) -> float:
+            return timestamp_to_frame(self.flight_time, None)
+        vertex_index: bpy.props.IntProperty(
+            name="Vertex Index",
+            description="Index of the vertex in the flight path",
+            default=0,
+        )
+        flight_time: bpy.props.FloatProperty(
+            name="Flight Time",
+            description="Time of the flight in seconds",
+            default=0.0,
+        )
+        frame: bpy.props.FloatProperty(
+            name="Frame",
+            description="Frame number in the Blender timeline",
+            default=0.0,
+            get=_get_frame,
+        )
+
+    @classmethod
+    def get_from_object(cls, obj: bpy.types.Object) -> CollectionProp[Self]:
+        props = obj.autel_flight_path_vertex_props # type: ignore[assignment]
+        return props
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+        bpy.types.Object.autel_flight_path_vertex_props = bpy.props.CollectionProperty(type=cls) # type: ignore[assign]
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        del bpy.types.Object.autel_flight_path_vertex_props # type: ignore[assign]
+        bpy.utils.unregister_class(cls)
+
 
 class TrackItemProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:

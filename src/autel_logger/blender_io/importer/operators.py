@@ -10,7 +10,8 @@ if TYPE_CHECKING:
     from ..types import *
 
 from .props import (
-    FlightProperties, CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
+    FlightProperties, FlightPathVertexProperties,
+    CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
 )
 
 
@@ -32,7 +33,7 @@ def animate_objects(
     scene = context.scene
     assert scene is not None
     current_frame = scene.frame_current
-    scene.frame_start = 1
+    scene.frame_start = 0
     scene.frame_end = max((item.frame for item in flight_props.track_items), default=1)
     drone_obj = flight_props.drone_object
     gimbal_obj = flight_props.gimbal_object
@@ -291,17 +292,23 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         rot_constraint.mix_mode = 'ADD'
         return camera
 
-    def build_flight_path(self, data: BlObjectWithVerticesData, context: bpy.types.Context, parent: bpy.types.Object) -> bpy.types.Object:
+    def build_flight_path(self, data: BlFlightPathData, context: bpy.types.Context, parent: bpy.types.Object) -> bpy.types.Object:
         bpy.ops.curve.primitive_bezier_curve_add()
         obj = context.active_object
         assert obj is not None
         assert obj.type == 'CURVE'
+        assert isinstance(obj.data, bpy.types.Curve)
         obj.parent = parent
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.curve.delete(type='VERT')
+        path_props = FlightPathVertexProperties.get_from_object(obj)
+        assert len(path_props) == 0
         # bpy.ops.curve.vertex_add(location=(0, 0, 0))
-        for vert in data['vertices']:
+        for i, vert in enumerate(data['vertices']):
             bpy.ops.curve.vertex_add(location=vert)
+            prop = path_props.add()
+            prop.vertex_index = i
+            prop.flight_time = data['vertex_times'][i]
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.name = data['name']
         assert obj.data is not None

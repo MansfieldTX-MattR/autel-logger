@@ -3,7 +3,7 @@ import bpy
 
 
 from .props import (
-    FlightProperties, TrackItemProperties, VideoItemProperties,
+    FlightProperties, TrackItemProperties, VideoItemProperties, FlightPathVertexProperties,
 )
 from .operators import (
     IMPORT_SCENE_OT_autel_flight_log,
@@ -39,6 +39,7 @@ def is_registered() -> bool:
 
 
 def register() -> None:
+    FlightPathVertexProperties._register_cls()
     TrackItemProperties._register_cls()
     VideoItemProperties._register_cls()
     FlightProperties._register_cls()
@@ -61,6 +62,7 @@ def unregister() -> None:
         FlightProperties._unregister_cls()
         TrackItemProperties._unregister_cls()
         VideoItemProperties._unregister_cls()
+        FlightPathVertexProperties._unregister_cls()
         SCENE_OT_autel_flight_log_next_item._unregister_cls()
         SCENE_OT_autel_flight_log_prev_item._unregister_cls()
         SCENE_OT_autel_flight_log_next_video_item._unregister_cls()

@@ -11,6 +11,7 @@ __all__ = [
     'BlObjectData',
     'BlObjectLatLonAltData',
     'BlObjectWithVerticesData',
+    'BlFlightPathData',
     'BlTrackItemData',
     'BlVideoItemData',
     'BlImageItemData',
@@ -55,6 +56,9 @@ class BlObjectData(TypedDict):
 class BlObjectWithVerticesData(BlObjectData):
     vertices: list[BlVector3D]
 
+class BlFlightPathData(BlObjectWithVerticesData):
+    vertex_times: list[float]
+
 
 class BlTrackItemData(TypedDict):
     index: int
@@ -88,7 +92,7 @@ class BlImageItemData(TypedDict):
 
 class BlExportData(TypedDict):
     filename: str
-    flight_path: BlObjectWithVerticesData
+    flight_path: BlFlightPathData
     track_items: list[BlTrackItemData]
     video_items: list[BlVideoItemData]
     image_items: list[BlImageItemData]

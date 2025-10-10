@@ -9,22 +9,25 @@ from ..flight.flight import Flight, TrackItem
 
 
 
-def build_flight_path_data(flight: Flight) -> BlObjectWithVerticesData:
+def build_flight_path_data(flight: Flight) -> BlFlightPathData:
     # vertices = [
     #     (item.relative_location.x, item.relative_location.y, item.relative_location.z)
     #     for item in flight.track_items
     # ]
     vertices = []
+    vertex_times = []
     for item in flight.track_items:
         xy = item.relative_location
         z = item.altitude
         if xy is None:
             continue
         vertices.append((xy.x, xy.y, z))
-    return BlObjectWithVerticesData(
+        vertex_times.append(item.time_offset)
+    return BlFlightPathData(
         name='Flight Path',
         type='CURVE',
         vertices=vertices,
+        vertex_times=vertex_times,
     )
 
 
