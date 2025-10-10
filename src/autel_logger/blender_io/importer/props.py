@@ -26,10 +26,22 @@ CAMERA_FOV = 2 * math.degrees(math.atan((CAMERA_SENSOR_WIDTH / 2) / CAMERA_FOCAL
 
 
 @overload
-def timestamp_to_frame(timestamp: float|datetime.datetime, context: bpy.types.Context|None = None, as_int: Literal[False] = ...) -> float: ...
+def timestamp_to_frame(
+    timestamp: float|datetime.datetime,
+    context: bpy.types.Context|None = None,
+    as_int: Literal[False] = ...
+) -> float: ...
 @overload
-def timestamp_to_frame(timestamp: float|datetime.datetime, context: bpy.types.Context|None = None, as_int: Literal[True] = ...) -> int: ...
-def timestamp_to_frame(timestamp: float|datetime.datetime, context: bpy.types.Context|None = None, as_int: bool = False) -> float|int:
+def timestamp_to_frame(
+    timestamp: float|datetime.datetime,
+    context: bpy.types.Context|None = None,
+    as_int: Literal[True] = ...
+) -> int: ...
+def timestamp_to_frame(
+    timestamp: float|datetime.datetime,
+    context: bpy.types.Context|None = None,
+    as_int: bool = False
+) -> float|int:
     """Convert a UNIX timestamp to a Blender frame number."""
     if isinstance(timestamp, datetime.datetime):
         timestamp = timestamp.timestamp()
@@ -46,7 +58,10 @@ def timestamp_to_frame(timestamp: float|datetime.datetime, context: bpy.types.Co
     return delta
 
 
-def frame_to_timestamp(frame: int|float, context: bpy.types.Context|None = None) -> float:
+def frame_to_timestamp(
+    frame: int|float,
+    context: bpy.types.Context|None = None
+) -> float:
     """Convert a Blender frame number to a UNIX timestamp."""
     if context is None or context.scene is None:
         fps, fps_base = None, None
