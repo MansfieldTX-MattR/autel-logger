@@ -437,3 +437,31 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         assert context.window_manager is not None
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
+
+
+
+
+def menu_func_import(self, context: bpy.types.Context) -> None:
+    self.layout.operator(IMPORT_SCENE_OT_autel_flight_log.bl_idname, text="Autel Flight Log (.json)")
+
+
+def register_classes() -> None:
+    IMPORT_SCENE_OT_autel_flight_log._register_cls()
+    SCENE_OT_autel_flight_log_update_animation._register_cls()
+    SCENE_OT_autel_flight_log_next_item._register_cls()
+    SCENE_OT_autel_flight_log_prev_item._register_cls()
+    SCENE_OT_autel_flight_log_next_video_item._register_cls()
+    SCENE_OT_autel_flight_log_prev_video_item._register_cls()
+    SCENE_OT_autel_flight_log_import_video._register_cls()
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+
+
+def unregister_classes() -> None:
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    SCENE_OT_autel_flight_log_update_animation._unregister_cls()
+    IMPORT_SCENE_OT_autel_flight_log._unregister_cls()
+    SCENE_OT_autel_flight_log_next_item._unregister_cls()
+    SCENE_OT_autel_flight_log_prev_item._unregister_cls()
+    SCENE_OT_autel_flight_log_next_video_item._unregister_cls()
+    SCENE_OT_autel_flight_log_prev_video_item._unregister_cls()
+    SCENE_OT_autel_flight_log_import_video._unregister_cls()

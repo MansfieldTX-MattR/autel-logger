@@ -111,3 +111,12 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
     @classmethod
     def _unregister_cls(cls) -> None:
         bpy.utils.unregister_class(cls)
+
+
+
+def register_classes() -> None:
+    bpy.utils.register_class(OBJECT_PT_flight_log_panel)
+
+
+def unregister_classes() -> None:
+    bpy.utils.unregister_class(OBJECT_PT_flight_log_panel)

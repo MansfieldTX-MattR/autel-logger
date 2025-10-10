@@ -9,19 +9,6 @@ if _needs_reload:
     importlib.reload(operators)
     importlib.reload(ui)
 
-from .props import (
-    FlightProperties, TrackItemProperties, VideoItemProperties, FlightPathVertexProperties,
-)
-from .operators import (
-    IMPORT_SCENE_OT_autel_flight_log,
-    SCENE_OT_autel_flight_log_update_animation,
-    SCENE_OT_autel_flight_log_next_item,
-    SCENE_OT_autel_flight_log_prev_item,
-    SCENE_OT_autel_flight_log_next_video_item,
-    SCENE_OT_autel_flight_log_prev_video_item,
-    SCENE_OT_autel_flight_log_import_video,
-)
-from .ui import OBJECT_PT_flight_log_panel
 
 bl_info = {
     "name": "Autel Flight Log Importer",
@@ -36,47 +23,25 @@ bl_info = {
 }
 
 
-def menu_func_import(self, context: bpy.types.Context) -> None:
-    self.layout.operator(IMPORT_SCENE_OT_autel_flight_log.bl_idname, text="Autel Flight Log (.json)")
 
 
 
 def is_registered() -> bool:
-    op_name = IMPORT_SCENE_OT_autel_flight_log.bl_idname.split('.')[-1]
+    op_name = operators.IMPORT_SCENE_OT_autel_flight_log.bl_idname.split('.')[-1]
     return hasattr(bpy.ops.import_scene, op_name)
 
 
 def register() -> None:
-    FlightPathVertexProperties._register_cls()
-    TrackItemProperties._register_cls()
-    VideoItemProperties._register_cls()
-    FlightProperties._register_cls()
-    IMPORT_SCENE_OT_autel_flight_log._register_cls()
-    SCENE_OT_autel_flight_log_update_animation._register_cls()
-    SCENE_OT_autel_flight_log_next_item._register_cls()
-    SCENE_OT_autel_flight_log_prev_item._register_cls()
-    SCENE_OT_autel_flight_log_next_video_item._register_cls()
-    SCENE_OT_autel_flight_log_prev_video_item._register_cls()
-    SCENE_OT_autel_flight_log_import_video._register_cls()
-    OBJECT_PT_flight_log_panel._register_cls()
-    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    props.register_classes()
+    operators.register_classes()
+    ui.register_classes()
 
 
 def unregister() -> None:
-    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     try:
-        OBJECT_PT_flight_log_panel._unregister_cls()
-        SCENE_OT_autel_flight_log_update_animation._unregister_cls()
-        IMPORT_SCENE_OT_autel_flight_log._unregister_cls()
-        FlightProperties._unregister_cls()
-        TrackItemProperties._unregister_cls()
-        VideoItemProperties._unregister_cls()
-        FlightPathVertexProperties._unregister_cls()
-        SCENE_OT_autel_flight_log_next_item._unregister_cls()
-        SCENE_OT_autel_flight_log_prev_item._unregister_cls()
-        SCENE_OT_autel_flight_log_next_video_item._unregister_cls()
-        SCENE_OT_autel_flight_log_prev_video_item._unregister_cls()
-        SCENE_OT_autel_flight_log_import_video._unregister_cls()
+        ui.unregister_classes()
+        operators.unregister_classes()
+        props.unregister_classes()
     except Exception as e:
         print(f"Error during unregister: {e}")
 

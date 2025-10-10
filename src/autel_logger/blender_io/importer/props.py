@@ -663,3 +663,18 @@ class FlightProperties(bpy.types.PropertyGroup):
             return None
         prev_item = max(past_items, key=lambda item: item.get_end_frame(context))
         return prev_item
+
+
+
+def register_classes() -> None:
+    FlightPathVertexProperties._register_cls()
+    TrackItemProperties._register_cls()
+    VideoItemProperties._register_cls()
+    FlightProperties._register_cls()
+
+
+def unregister_classes() -> None:
+    FlightProperties._unregister_cls()
+    VideoItemProperties._unregister_cls()
+    TrackItemProperties._unregister_cls()
+    FlightPathVertexProperties._unregister_cls()
