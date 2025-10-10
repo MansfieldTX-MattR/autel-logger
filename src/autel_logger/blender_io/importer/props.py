@@ -119,6 +119,7 @@ class FlightPathVertexProperties(bpy.types.PropertyGroup):
 
 class TrackItemProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:
+        name: str
         index: int
         frame: int
         scene_time: float
@@ -134,6 +135,11 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         relative_height: float
         distance: float
     else:
+        name: bpy.props.StringProperty(
+            name="Name",
+            description="Name of the track item. This is str(self.frame)",
+            default="",
+        )
         index: bpy.props.IntProperty(
             name="Index",
             description="Index of the track item in the flight",
@@ -236,6 +242,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
     def update_frame(self, context: bpy.types.Context) -> None:
         """Update the frame number based on the scene fps"""
         self.frame = timestamp_to_frame(self.scene_time, context, as_int=True)
+        self.name = str(self.frame)
 
     @classmethod
     def from_track_item_data(
@@ -248,6 +255,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         assert isinstance(item, cls)
         item.index = item_data['index']
         item.update_frame(context)
+        # note: item.name is already set in on_scene_fps_change
         item.scene_time = item_data['time']
         if item_data['location'] is not None:
             item.latitude = item_data['location']['latitude']
@@ -283,6 +291,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
 
 class VideoItemProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:
+        name: str
         src_filename: str
         filename: str
         start_time: float
@@ -297,6 +306,11 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         exists_locally: bool
         image_object: bpy.types.Image|None
     else:
+        name: bpy.props.StringProperty(
+            name="Name",
+            description="Name of the video item. This is str(self.start_frame)",
+            default="",
+        )
         src_filename: bpy.props.StringProperty(
             name="Source Filename",
             description="Original filename of the video",
@@ -599,6 +613,7 @@ class FlightProperties(bpy.types.PropertyGroup):
 
     def add_video_item(self, item_data: BlVideoItemData) -> VideoItemProperties:
         item = self.video_items.add()
+        item.name = str(item_data['start_time'])
         item.src_filename = item_data.get('src_filename', item_data['filename'])
         item.start_time = item_data['start_time']
         item.end_time = item_data['end_time']
