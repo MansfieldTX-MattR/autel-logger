@@ -5,6 +5,7 @@ from pathlib import Path
 import math
 
 import bpy
+from bpy.app.handlers import persistent
 
 T = TypeVar("T")
 
@@ -28,28 +29,32 @@ CAMERA_FOV = 2 * math.degrees(math.atan((CAMERA_SENSOR_WIDTH / 2) / CAMERA_FOCAL
 @overload
 def timestamp_to_frame(
     timestamp: float|datetime.datetime,
-    context: bpy.types.Context|None = None,
+    context: bpy.types.Context|bpy.types.Scene|None = None,
     as_int: Literal[False] = ...
 ) -> float: ...
 @overload
 def timestamp_to_frame(
     timestamp: float|datetime.datetime,
-    context: bpy.types.Context|None = None,
+    context: bpy.types.Context|bpy.types.Scene|None = None,
     as_int: Literal[True] = ...
 ) -> int: ...
 def timestamp_to_frame(
     timestamp: float|datetime.datetime,
-    context: bpy.types.Context|None = None,
+    context: bpy.types.Context|bpy.types.Scene|None = None,
     as_int: bool = False
 ) -> float|int:
     """Convert a UNIX timestamp to a Blender frame number."""
     if isinstance(timestamp, datetime.datetime):
         timestamp = timestamp.timestamp()
-    if context is None or context.scene is None:
-        fps, fps_base = None, None
+    if isinstance(context, bpy.types.Scene):
+        scene = context
+    elif context is not None:
+        scene = context.scene
+    if scene is not None:
+        fps = scene.render.fps
+        fps_base = scene.render.fps_base
     else:
-        fps = context.scene.render.fps
-        fps_base = context.scene.render.fps_base
+        fps, fps_base = None, None
     delta = bpy.utils.time_to_frame(timestamp, fps=fps, fps_base=fps_base)
     if isinstance(delta, datetime.timedelta):
         delta = delta.total_seconds()
@@ -60,14 +65,18 @@ def timestamp_to_frame(
 
 def frame_to_timestamp(
     frame: int|float,
-    context: bpy.types.Context|None = None
+    context: bpy.types.Context|bpy.types.Scene|None = None
 ) -> float:
     """Convert a Blender frame number to a UNIX timestamp."""
-    if context is None or context.scene is None:
-        fps, fps_base = None, None
+    if isinstance(context, bpy.types.Scene):
+        scene = context
+    elif context is not None:
+        scene = context.scene
+    if scene is not None:
+        fps = scene.render.fps
+        fps_base = scene.render.fps_base
     else:
-        fps = context.scene.render.fps
-        fps_base = context.scene.render.fps_base
+        fps, fps_base = None, None
     delta = bpy.utils.time_from_frame(frame, fps=fps, fps_base=fps_base)
     assert delta is not None
     if isinstance(delta, datetime.timedelta):
@@ -239,7 +248,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
             default=0.0,
         )
 
-    def update_frame(self, context: bpy.types.Context) -> None:
+    def on_scene_fps_change(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         """Update the frame number based on the scene fps"""
         self.frame = timestamp_to_frame(self.scene_time, context, as_int=True)
         self.name = str(self.frame)
@@ -254,7 +263,7 @@ class TrackItemProperties(bpy.types.PropertyGroup):
         item = flight.track_items.add()
         assert isinstance(item, cls)
         item.index = item_data['index']
-        item.update_frame(context)
+        item.on_scene_fps_change(context)
         # note: item.name is already set in on_scene_fps_change
         item.scene_time = item_data['time']
         if item_data['location'] is not None:
@@ -353,24 +362,16 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             min=-180.0,
             max=180.0,
         )
-        def _get_start_frame(self) -> int:
-            context = bpy.context
-            return int(round(self.get_start_frame(context)))
-        def _get_end_frame(self) -> int:
-            context = bpy.context
-            return int(round(self.get_end_frame(context)))
         def _get_current_frame(self) -> int:
             context = bpy.context
             return int(round(self.get_current_frame(context)))
         start_frame: bpy.props.IntProperty(
             name="Start Frame",
             description="Start frame of the video",
-            get=_get_start_frame,
         )
         end_frame: bpy.props.IntProperty(
             name="End Frame",
             description="End frame of the video",
-            get=_get_end_frame,
         )
         current_frame: bpy.props.IntProperty(
             name="Current Frame",
@@ -393,10 +394,16 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             type=bpy.types.Image,
         )
 
-    def get_start_frame(self, context: bpy.types.Context) -> float:
+    def on_scene_fps_change(self, context: bpy.types.Context|bpy.types.Scene) -> None:
+        """Update start_frame and end_frame when scene fps changes"""
+        self.start_frame = int(round(self.get_start_frame(context)))
+        self.end_frame = int(round(self.get_end_frame(context)))
+        self.name = str(self.start_frame)
+
+    def get_start_frame(self, context: bpy.types.Context|bpy.types.Scene) -> float:
         return timestamp_to_frame(self.start_time, context)
 
-    def get_end_frame(self, context: bpy.types.Context) -> float:
+    def get_end_frame(self, context: bpy.types.Context|bpy.types.Scene) -> float:
         return timestamp_to_frame(self.end_time, context)
 
     def get_current_frame(self, context: bpy.types.Context) -> float:
@@ -606,6 +613,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         for item_data in data['video_items']:
             flight.add_video_item(item_data)
         context.scene.autel_flight_logs_index = len(context.scene.autel_flight_logs) - 1 # type: ignore[assigned]
+        flight.subscribe_to_scene_fps(context.scene)
         return flight
 
     def add_track_item(self, item_data: BlTrackItemData, context: bpy.types.Context) -> TrackItemProperties:
@@ -624,9 +632,34 @@ class FlightProperties(bpy.types.PropertyGroup):
         item.exists_locally = item_data['exists_locally']
         return item
 
-    def update_item_times(self, context: bpy.types.Context) -> None:
+    @staticmethod
+    def subscribe_all_flights_to_scene_fps(scene: bpy.types.Scene) -> None:
+        for flight in scene.autel_flight_logs: # type: ignore[attr-defined]
+            flight.subscribe_to_scene_fps(scene)
+
+    def subscribe_to_scene_fps(self, scene: bpy.types.Scene) -> None:
+        if scene is None:
+            return
+        # Unsubscribe first to avoid duplicate subscriptions
+        bpy.msgbus.clear_by_owner(self)
+        # Subscribe to changes in scene.render.fps
+        key = scene.render.path_resolve("fps", False)
+        bpy.msgbus.subscribe_rna(
+            key=key,
+            owner=self,
+            args=(self, scene),
+            notify=self.on_scene_fps_changed,
+        )
+
+    @staticmethod
+    def on_scene_fps_changed(instance: FlightProperties, scene: bpy.types.Scene) -> None:
+        instance.update_item_times(scene)
+
+    def update_item_times(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         for item in self.track_items:
-            item.update_frame(context)
+            item.on_scene_fps_change(context)
+        for item in self.video_items:
+            item.on_scene_fps_change(context)
 
     @property
     def items_by_frame(self) -> dict[int, TrackItemProperties]:
@@ -701,6 +734,12 @@ def register_classes() -> None:
     TrackItemProperties._register_cls()
     VideoItemProperties._register_cls()
     FlightProperties._register_cls()
+    @persistent
+    def on_load_post(*args) -> None:
+        for scene in bpy.data.scenes:
+            FlightProperties.subscribe_all_flights_to_scene_fps(scene)
+    bpy.app.handlers.load_post.append(on_load_post)
+
 
 
 def unregister_classes() -> None:
