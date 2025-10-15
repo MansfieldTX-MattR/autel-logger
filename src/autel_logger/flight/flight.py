@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import TypedDict, NamedTuple, Literal, Self
+from typing import TypedDict, NamedTuple, Literal, Sequence, Self
 from pathlib import Path
 import datetime
 from dataclasses import dataclass
@@ -16,12 +16,6 @@ from ..parser.model import (
 from ..config import Config
 from .media import VideoCacheData
 
-# class Battery(TypedDict):
-#     serial_number: str
-#     design_volume: float
-#     full_charge_volume: float
-#     cycle_count: int
-#     cell_count: int
 
 
 class Flight(NamedTuple):
@@ -33,6 +27,7 @@ class Flight(NamedTuple):
     duration: datetime.timedelta
     distance: float  # in meters
     max_altitude: float  # in meters
+    battery_summary: BatterySummary
     # max_speed: float  # in m/s
     # max_flight_radius: float  # in meters
     start_location: LatLon
@@ -50,6 +45,7 @@ class Flight(NamedTuple):
         duration: float
         distance: float
         max_altitude: float
+        battery_summary: BatterySummary.SerializeTD
         start_location: LatLon.SerializeTD
         bounding_box: GeoBox.SerializeTD
         osm_url: str
@@ -92,6 +88,7 @@ class Flight(NamedTuple):
             max_altitude=model.header.max_altitude,
             # max_speed=model.out_full.max_speed,
             # max_flight_radius=model.out_full.max_flight_radius,
+            battery_summary=BatterySummary.from_records(model.header.battery_sn, track_items),
             start_location=model.header.start_location,
             bounding_box=bbox,
             track_items=track_items,
@@ -109,6 +106,7 @@ class Flight(NamedTuple):
             'duration': self.duration.total_seconds(),
             'distance': self.distance,
             'max_altitude': self.max_altitude,
+            'battery_summary': self.battery_summary.serialize(),
             'start_location': self.start_location.serialize(),
             'bounding_box': self.bounding_box.serialize(),
             'osm_url': self.osm_url,
@@ -128,6 +126,7 @@ class Flight(NamedTuple):
             duration=datetime.timedelta(seconds=data['duration']),
             distance=data['distance'],
             max_altitude=data['max_altitude'],
+            battery_summary=BatterySummary.deserialize(data['battery_summary']),
             start_location=LatLon.deserialize(data['start_location']),
             bounding_box=GeoBox.deserialize(data['bounding_box']),
             track_items=[
@@ -186,6 +185,142 @@ class Flight(NamedTuple):
             item.duration = best.item.duration
             changed = True
         return changed
+
+
+type SummaryValueT = int|float|list[int]|list[float]
+
+class SummaryItem[T: SummaryValueT](NamedTuple):
+    """A summary item with a value, index, and time offset
+    """
+    value: T
+    """The item value"""
+    index: int
+    """The item index"""
+    time_offset: float
+    """The item time offset in seconds since start of flight"""
+
+    class SerializeTD[ST: SummaryValueT](TypedDict):
+        value: ST
+        index: int
+        time_offset: float
+
+    def serialize(self) -> SerializeTD[T]:
+        return {
+            'value': self.value,
+            'index': self.index,
+            'time_offset': self.time_offset,
+        }
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD[T]) -> Self:
+        return cls(
+            value=data['value'],
+            index=data['index'],
+            time_offset=data['time_offset'],
+        )
+
+
+class BatterySummary(NamedTuple):
+    serial_number: str
+    """The battery's :attr:`serial_number <.parser.model.ParsedHead.battery_sn>`"""
+    capacity: float
+    """The :attr:`full charge volume <.parser.model.BatteryInfo.full_charge_volume>` in mAh"""
+    max_voltage: SummaryItem[float]
+    """The maximum :attr:`voltage <.parser.model.BatteryInfo.current_voltage>` in VDC"""
+    min_voltage: SummaryItem[float]
+    """The minimum :attr:`voltage <.parser.model.BatteryInfo.current_voltage>` in VDC"""
+    max_current: SummaryItem[float]
+    """The maximum :attr:`current output <.parser.model.BatteryInfo.current_current>` in Amps"""
+    max_power: SummaryItem[float]
+    """The maximum :attr:`power output <.parser.model.BatteryInfo.current_electricity>` in Watts"""
+    max_temperature: SummaryItem[float]
+    """The maximum :attr:`~.parser.model.BatteryInfo.temperature` in Celsius"""
+    min_temperature: SummaryItem[float]
+    """The minimum :attr:`~.parser.model.BatteryInfo.temperature` in Celsius"""
+    max_remaining: SummaryItem[float]
+    """The maximum :attr:`remaining power <.parser.model.BatteryInfo.remain_power_percent>` in percent"""
+    min_remaining: SummaryItem[float]
+    """The minimum :attr:`remaining power <.parser.model.BatteryInfo.remain_power_percent>` in percent"""
+
+    class SerializeTD(TypedDict):
+        serial_number: str
+        capacity: float
+        max_voltage: SummaryItem.SerializeTD[float]
+        min_voltage: SummaryItem.SerializeTD[float]
+        max_current: SummaryItem.SerializeTD[float]
+        max_power: SummaryItem.SerializeTD[float]
+        max_temperature: SummaryItem.SerializeTD[float]
+        min_temperature: SummaryItem.SerializeTD[float]
+        max_remaining: SummaryItem.SerializeTD[float]
+        min_remaining: SummaryItem.SerializeTD[float]
+
+    def serialize(self) -> SerializeTD:
+        return {
+            'serial_number': self.serial_number,
+            'capacity': self.capacity,
+            'max_voltage': self.max_voltage.serialize(),
+            'min_voltage': self.min_voltage.serialize(),
+            'max_current': self.max_current.serialize(),
+            'max_power': self.max_power.serialize(),
+            'max_temperature': self.max_temperature.serialize(),
+            'min_temperature': self.min_temperature.serialize(),
+            'max_remaining': self.max_remaining.serialize(),
+            'min_remaining': self.min_remaining.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            serial_number=data['serial_number'],
+            capacity=data['capacity'],
+            max_voltage=SummaryItem.deserialize(data['max_voltage']),
+            min_voltage=SummaryItem.deserialize(data['min_voltage']),
+            max_current=SummaryItem.deserialize(data['max_current']),
+            max_power=SummaryItem.deserialize(data['max_power']),
+            max_temperature=SummaryItem.deserialize(data['max_temperature']),
+            min_temperature=SummaryItem.deserialize(data['min_temperature']),
+            max_remaining=SummaryItem.deserialize(data['max_remaining']),
+            min_remaining=SummaryItem.deserialize(data['min_remaining']),
+        )
+
+    @classmethod
+    def from_records(cls, serial_number: str, records: Sequence[TrackItem]) -> Self:
+        if not len(records):
+            raise ValueError("No records provided")
+        voltages = [
+            (rec.battery.current_voltage, rec.index, rec.time_offset)
+            for rec in records
+        ]
+        currents = [
+            (rec.battery.current_current, rec.index, rec.time_offset)
+            for rec in records
+        ]
+        temperatures = [
+            (rec.battery.temperature, rec.index, rec.time_offset)
+            for rec in records
+        ]
+        remainings = [
+            (rec.battery.remain_power_percent, rec.index, rec.time_offset)
+            for rec in records
+        ]
+        powers = [
+            (rec.battery.current_electricity, rec.index, rec.time_offset)
+            for rec in records
+        ]
+        capacity = records[0].battery.full_charge_volume
+        assert all(capacity == rec.battery.full_charge_volume for rec in records), "Battery capacity changed during flight"
+        return cls(
+            serial_number=serial_number,
+            capacity=capacity,
+            max_voltage=SummaryItem(*max(voltages)),
+            min_voltage=SummaryItem(*min(voltages)),
+            max_current=SummaryItem(*max(currents)),
+            max_power=SummaryItem(*max(powers)),
+            max_temperature=SummaryItem(*max(temperatures)),
+            min_temperature=SummaryItem(*min(temperatures)),
+            max_remaining=SummaryItem(*max(remainings)),
+            min_remaining=SummaryItem(*min(remainings)),
+        )
 
 
 class TrackItem(NamedTuple):
