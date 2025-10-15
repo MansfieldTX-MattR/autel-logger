@@ -520,10 +520,7 @@ class ParsedInBase[
                 pitch=data['drone_pitch'], roll=data['drone_roll'], yaw=data['drone_yaw'],
                 unit='radians',
             ).to_degrees(),
-            flight_control=FlightControl(
-                StickPosition(data['m_left_horizontal'], data['m_left_vertical']),
-                StickPosition(data['m_right_horizontal'], data['m_right_vertical']),
-            ),
+            flight_control=FlightControl.from_dict(data),
             radar_info=RadarInfo.from_dict(data),
             phone_heading=data['phone_heading'],
             param_1=data['param_1'],

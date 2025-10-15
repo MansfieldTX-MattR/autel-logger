@@ -109,10 +109,7 @@ class Flight(NamedTuple):
             'duration': self.duration.total_seconds(),
             'distance': self.distance,
             'max_altitude': self.max_altitude,
-            'start_location': {
-                'latitude': self.start_location.latitude,
-                'longitude': self.start_location.longitude,
-            },
+            'start_location': self.start_location.serialize(),
             'bounding_box': self.bounding_box.serialize(),
             'osm_url': self.osm_url,
             'track_items': [item.serialize() for item in self.track_items],
