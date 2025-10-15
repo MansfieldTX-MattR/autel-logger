@@ -283,6 +283,35 @@ class Warnings(NamedTuple):
     vision_ext: str
     error_code: int
 
+    class SerializeTD(TypedDict):
+        drone: str
+        drone_ext: str
+        gimbal: str
+        vision: str
+        vision_ext: str
+        error_code: int
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            drone=self.drone,
+            drone_ext=self.drone_ext,
+            gimbal=self.gimbal,
+            vision=self.vision,
+            vision_ext=self.vision_ext,
+            error_code=self.error_code,
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            drone=data['drone'],
+            drone_ext=data['drone_ext'],
+            gimbal=data['gimbal'],
+            vision=data['vision'],
+            vision_ext=data['vision_ext'],
+            error_code=data['error_code'],
+        )
+
     @classmethod
     def from_dict(cls, data: HasDroneWarningTD) -> Self:
         return cls(
