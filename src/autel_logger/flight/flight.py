@@ -23,6 +23,7 @@ class Flight(NamedTuple):
     aircraft_serial_number: str
     battery_serial_number: str
     drone_type: int
+    timezone_offset: int # in seconds from UTC
     start_time: datetime.datetime
     duration: datetime.timedelta
     distance: float  # in meters
@@ -41,6 +42,7 @@ class Flight(NamedTuple):
         aircraft_serial_number: str
         battery_serial_number: str
         drone_type: int
+        timezone_offset: int
         start_time: str
         duration: float
         distance: float
@@ -82,6 +84,7 @@ class Flight(NamedTuple):
             aircraft_serial_number=model.header.aircraft_sn,
             battery_serial_number=model.header.battery_sn,
             drone_type=model.header.drone_type,
+            timezone_offset=model.header.time_zone,
             start_time=model.header.flight_at,
             duration=datetime.timedelta(seconds=model.header.flight_duration),
             distance=model.header.distance,
@@ -102,6 +105,7 @@ class Flight(NamedTuple):
             'aircraft_serial_number': self.aircraft_serial_number,
             'battery_serial_number': self.battery_serial_number,
             'drone_type': self.drone_type,
+            'timezone_offset': self.timezone_offset,
             'start_time': self.start_time.isoformat(),
             'duration': self.duration.total_seconds(),
             'distance': self.distance,
@@ -122,6 +126,7 @@ class Flight(NamedTuple):
             aircraft_serial_number=data['aircraft_serial_number'],
             battery_serial_number=data['battery_serial_number'],
             drone_type=data['drone_type'],
+            timezone_offset=data['timezone_offset'],
             start_time=datetime.datetime.fromisoformat(data['start_time']),
             duration=datetime.timedelta(seconds=data['duration']),
             distance=data['distance'],

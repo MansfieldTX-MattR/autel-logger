@@ -252,7 +252,7 @@ RECORD_SIZES: dict[AllLogKey, int] = {
 
 RECORD_FORMATS: dict[AllLogKey, str] = {
     "flight_time": "i",
-    "time_zone": "i",
+    "time_zone": "si",
     "media_timestamp": "i",
     "current_time": "i",
     "duration": "i",

@@ -417,7 +417,7 @@ class ParsedHead(RecordBase[Literal['head']]):
     video_time: int
     flight_at: datetime.datetime
     flight_duration: float
-    time_zone: int
+    time_zone: int # in seconds from UTC
     start_location: LatLon
     image_count: int
     video_count: int
@@ -438,7 +438,7 @@ class ParsedHead(RecordBase[Literal['head']]):
             video_time=data['video_time'],
             flight_at=datetime.datetime.fromtimestamp(data['flight_at'] / 1000),
             flight_duration=data['flight_time'],
-            time_zone=data['time_zone'],
+            time_zone=data['time_zone'] // 1000,
             start_location=LatLon(data['start_latitude'], data['start_longitude']),
             image_count=data['image_count'],
             video_count=data['video_count'],

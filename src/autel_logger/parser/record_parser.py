@@ -61,6 +61,9 @@ def read_uint16(data: DataView, offset: int) -> int:
 def read_uint32(data: DataView, offset: int) -> int:
     return struct.unpack_from("<I" if IS_LE else ">I", data, offset)[0]
 
+def read_sint32(data: DataView, offset: int) -> int:
+    return struct.unpack_from("<i" if IS_LE else ">i", data, offset)[0]
+
 def read_uint64(data: DataView, offset: int) -> int:
     return struct.unpack_from("<Q" if IS_LE else ">Q", data, offset)[0]
 
@@ -319,6 +322,8 @@ def parse_record_item(data: DataView, offset: int, record_type: RecordTypeName, 
             value = hex(read_uint32(data, offset))
         elif fmt == 'i':
             value = read_uint32(data, offset)
+        elif fmt == 'si':
+            value = read_sint32(data, offset)
         else:
             value = read_uint32(data, offset)
     elif size == 8:
