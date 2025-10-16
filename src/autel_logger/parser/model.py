@@ -49,6 +49,7 @@ class BatteryInfo(NamedTuple):
     """Cell voltages in VDC"""
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         state: int|None
         design_volume: float
         full_charge_volume: float
@@ -119,6 +120,7 @@ class StickPosition(NamedTuple):
     vertical: float
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         horizontal: float
         vertical: float
 
@@ -167,6 +169,7 @@ class FlightControl(NamedTuple):
     right_stick: StickPosition
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         left_stick: StickPosition.SerializeTD
         right_stick: StickPosition.SerializeTD
 
@@ -231,6 +234,7 @@ class RadarInfo(NamedTuple):
     bottom: int
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         timestamp: float
         front: int
         rear: int
@@ -284,6 +288,7 @@ class Warnings(NamedTuple):
     error_code: int
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         drone: str
         drone_ext: str
         gimbal: str
@@ -359,6 +364,7 @@ class RCInfo(NamedTuple):
     signal_strength: int
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         mode: int
         offline_duration: float
         button_state: int

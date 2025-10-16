@@ -38,6 +38,7 @@ class Flight(NamedTuple):
     image_items: list[ImageItem]
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         filename: str
         aircraft_serial_number: str
         battery_serial_number: str
@@ -205,6 +206,7 @@ class SummaryItem[T: SummaryValueT](NamedTuple):
     """The item time offset in seconds since start of flight"""
 
     class SerializeTD[ST: SummaryValueT](TypedDict):
+        """:meta private:"""
         value: ST
         index: int
         time_offset: float
@@ -248,6 +250,7 @@ class BatterySummary(NamedTuple):
     """The minimum :attr:`remaining power <.parser.model.BatteryInfo.remain_power_percent>` in percent"""
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         serial_number: str
         capacity: float
         max_voltage: SummaryItem.SerializeTD[float]
@@ -349,6 +352,7 @@ class TrackItem(NamedTuple):
     warnings: Warnings
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         index: int
         time: str
         time_offset: float
@@ -471,6 +475,7 @@ class VideoItem:
     fps: Fraction|None
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         filename: str
         local_filename: str|None
         start_time: str
@@ -546,6 +551,7 @@ class ImageItem(NamedTuple):
     location: LatLon
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         filename: str
         time: str
         time_offset: float

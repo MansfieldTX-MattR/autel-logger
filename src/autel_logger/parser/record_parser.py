@@ -24,6 +24,7 @@ class ParseResult(NamedTuple):
     total_records: int
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         filename: str
         header: ParsedHeadTD
         records: ParsedRecordsTD
@@ -82,6 +83,7 @@ def read_string(data: DataView, offset: int, length: int) -> str:
 
 class RecordTrack[T: RecordTypeName]:
     class SerializeTD(TypedDict):
+        """:meta private:"""
         name: T
         count: int
         size: int

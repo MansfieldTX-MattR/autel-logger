@@ -68,6 +68,7 @@ class CameraSettings(NamedTuple):
     f_num: float
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         iso: int
         shutter: int
         ev: float
@@ -102,6 +103,7 @@ class SubtitleEntry(NamedTuple):
     g_pry: Orientation[Literal['degrees']]
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         index: int
         start_pts: float
         end_pts: float
@@ -340,6 +342,7 @@ class VideoFileInfo:
     subtitle_entries: list[SubtitleEntry]
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         filename: str
         duration: float  # in seconds
         fps: str  # as a string fraction, e.g. "30/1"
@@ -407,6 +410,7 @@ class VideoCacheData:
         self.files_by_path = {vf.filename: vf for vf in self.video_files}
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         video_files: list[VideoFileInfo.SerializeTD]
 
     def serialize(self) -> SerializeTD:

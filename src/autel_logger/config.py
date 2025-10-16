@@ -30,6 +30,7 @@ class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
     recursive: bool = False
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         path: str
         type: T
         glob_pattern: str|None
@@ -69,6 +70,7 @@ class Config:
     DEFAULT_FILENAME: ClassVar[Path] = CONFIG_PATH
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         raw_log_dir: str|None
         data_dir: str
         cache_dir: str

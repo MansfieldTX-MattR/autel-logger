@@ -24,6 +24,7 @@ class PositionMeters(NamedTuple):
     z: float
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         x: float
         y: float
         z: float
@@ -43,6 +44,7 @@ class LatLon(NamedTuple):
     longitude: Longitude
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         latitude: float
         longitude: float
 
@@ -154,6 +156,7 @@ class GeoBox(NamedTuple):
     northeast: LatLon
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         southwest: LatLon.SerializeTD
         northeast: LatLon.SerializeTD
 
@@ -294,6 +297,7 @@ class LatLonAlt(NamedTuple):
     altitude: float
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         latitude: float
         longitude: float
         altitude: float
@@ -339,6 +343,7 @@ class Vector3D(NamedTuple):
     z: float
 
     class SerializeTD(TypedDict):
+        """:meta private:"""
         x: float
         y: float
         z: float
@@ -362,6 +367,7 @@ class Orientation[T: AngleUnit](NamedTuple):
     unit: T
 
     class SerializeTD[_T: AngleUnit](TypedDict):
+        """:meta private:"""
         pitch: float
         roll: float
         yaw: float
