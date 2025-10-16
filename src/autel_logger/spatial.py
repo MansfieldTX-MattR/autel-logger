@@ -13,15 +13,22 @@ from pathlib import Path
 # from geopy.units import arcminutes, arcseconds, degrees, radians, meters
 
 type AngleUnit = Literal['degrees', 'radians']
+"""Unit of angular measurement"""
 type Latitude = float
+"""Latitude in decimal degrees"""
 type Longitude = float
+"""Longitude in decimal degrees"""
 
 
 
 class PositionMeters(NamedTuple):
+    """Position in meters"""
     x: float
+    """X coordinate"""
     y: float
+    """Y coordinate"""
     z: float
+    """Z coordinate"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -40,8 +47,11 @@ class PositionMeters(NamedTuple):
 
 
 class LatLon(NamedTuple):
+    """Latitude and Longitude in decimal degrees"""
     latitude: Latitude
+    """Latitude"""
     longitude: Longitude
+    """Longitude"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -126,6 +136,7 @@ class LatLon(NamedTuple):
 
 
     def to_position_meters(self, reference: LatLon) -> PositionMeters:
+        """Calculate the position in meters relative to a reference LatLon point."""
         return self.distance_to_2d(reference)
         # # distance = self.distance_to(reference)
         # # bearing = math.radians(reference.bearing_to(self))
@@ -152,8 +163,11 @@ class LatLon(NamedTuple):
 
 
 class GeoBox(NamedTuple):
+    """A rectangular bounding box defined by southwest and northeast corners."""
     southwest: LatLon
+    """Southwest corner of the GeoBox."""
     northeast: LatLon
+    """Northeast corner of the GeoBox."""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -162,6 +176,7 @@ class GeoBox(NamedTuple):
 
     @classmethod
     def from_points(cls, points: Sequence[LatLon|LatLonAlt]) -> Self:
+        """Create a GeoBox that encompasses all given points."""
         points = list(points)
         min_lat = min(p.latitude for p in points)
         max_lat = max(p.latitude for p in points)
@@ -177,30 +192,37 @@ class GeoBox(NamedTuple):
 
     @property
     def north(self) -> Latitude:
+        """Northernmost latitude of the GeoBox."""
         return self.northeast.latitude
 
     @property
     def south(self) -> Latitude:
+        """Southernmost latitude of the GeoBox."""
         return self.southwest.latitude
 
     @property
     def east(self) -> Longitude:
+        """Easternmost longitude of the GeoBox."""
         return self.northeast.longitude
 
     @property
     def west(self) -> Longitude:
+        """Westernmost longitude of the GeoBox."""
         return self.southwest.longitude
 
     @property
     def northwest(self) -> LatLon:
+        """Northwest corner of the GeoBox."""
         return LatLon(self.north, self.west)
 
     @property
     def southeast(self) -> LatLon:
+        """Southeast corner of the GeoBox."""
         return LatLon(self.south, self.east)
 
     @property
     def center(self) -> LatLon:
+        """Center point of the GeoBox."""
         return LatLon(
             (self.southwest.latitude + self.northeast.latitude) / 2,
             (self.southwest.longitude + self.northeast.longitude) / 2,
@@ -292,9 +314,13 @@ class GeoBox(NamedTuple):
 
 
 class LatLonAlt(NamedTuple):
+    """Latitude, Longitude in decimal degrees, and Altitude in meters"""
     latitude: Latitude
+    """Latitude"""
     longitude: Longitude
+    """Longitude"""
     altitude: float
+    """Altitude in meters"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -328,6 +354,7 @@ class LatLonAlt(NamedTuple):
         return math.sqrt(horizontal_distance**2 + vertical_distance**2)
 
     def to_position_meters(self, reference: LatLon|LatLonAlt) -> PositionMeters:
+        """Calculate the position in meters relative to the given reference point."""
         horizontal = LatLon(self.latitude, self.longitude).to_position_meters(
             LatLon(reference.latitude, reference.longitude)
         )
@@ -338,9 +365,13 @@ class LatLonAlt(NamedTuple):
 
 
 class Vector3D(NamedTuple):
+    """A unitless 3D vector"""
     x: float
+    """X component"""
     y: float
+    """Y component"""
     z: float
+    """Z component"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -357,14 +388,22 @@ class Vector3D(NamedTuple):
 
 
 class Speed(Vector3D):
+    """Speed in meters per second"""
     pass
 
 
 class Orientation[T: AngleUnit](NamedTuple):
+    """Orientation in pitch, roll, and yaw angles in either degrees or radians
+    depending on :attr:`unit`
+    """
     pitch: float
+    """Pitch angle"""
     roll: float
+    """Roll angle"""
     yaw: float
+    """Yaw angle"""
     unit: T
+    """The :type:`AngleUnit` of the angles"""
 
     class SerializeTD[_T: AngleUnit](TypedDict):
         """:meta private:"""
@@ -392,6 +431,7 @@ class Orientation[T: AngleUnit](NamedTuple):
         return r.to_unit(unit)
 
     def to_unit[Ot: AngleUnit](self, target_unit: Ot) -> Orientation[Ot]:
+        """Convert this instance to the specified unit."""
         if self.unit == target_unit:
             return Orientation(self.pitch, self.roll, self.yaw, target_unit)
         if target_unit == 'degrees':
@@ -410,9 +450,11 @@ class Orientation[T: AngleUnit](NamedTuple):
             )
 
     def to_degrees(self) -> Orientation[Literal['degrees']]:
+        """Convert this instance to degrees."""
         return self.to_unit('degrees')
 
     def to_radians(self) -> Orientation[Literal['radians']]:
+        """Convert this instance to radians."""
         return self.to_unit('radians')
 
     def normalize(self) -> Self:
@@ -456,6 +498,7 @@ class Orientation[T: AngleUnit](NamedTuple):
         return Orientation(self.pitch, self.roll, yaw, self.unit)
 
     def inverted(self, pitch: bool, roll: bool, yaw: bool) -> Orientation[T]:
+        """Invert the pitch, roll, and/or yaw angles."""
         return Orientation(
             -self.pitch if pitch else self.pitch,
             -self.roll if roll else self.roll,

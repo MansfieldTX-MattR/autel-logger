@@ -19,23 +19,39 @@ from .media import VideoCacheData
 
 
 class Flight(NamedTuple):
+    """A single flight log with associated metadata and records"""
     filename: str
+    """The log filename"""
     aircraft_serial_number: str
+    """The aircraft serial number"""
     battery_serial_number: str
+    """The battery serial number"""
     drone_type: int
-    timezone_offset: int # in seconds from UTC
+    """The drone type"""
+    timezone_offset: int
+    """The timezone offset in seconds from UTC"""
     start_time: datetime.datetime
+    """The start time of the flight"""
     duration: datetime.timedelta
-    distance: float  # in meters
-    max_altitude: float  # in meters
+    """The duration of the flight"""
+    distance: float
+    """The total distance flown in meters"""
+    max_altitude: float
+    """The maximum altitude reached in meters"""
     battery_summary: BatterySummary
+    """A summary of the battery usage during the flight"""
     # max_speed: float  # in m/s
     # max_flight_radius: float  # in meters
     start_location: LatLon
+    """The starting location of the flight"""
     bounding_box: GeoBox
+    """The bounding box of the flight path"""
     track_items: list[TrackItem]
+    """The detailed track items recorded during the flight"""
     video_items: list[VideoItem]
+    """The video items associated with the flight"""
     image_items: list[ImageItem]
+    """The image items associated with the flight"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -62,6 +78,7 @@ class Flight(NamedTuple):
 
     @classmethod
     def from_model(cls, model: ModelResult) -> Self:
+        """Create a Flight instance from a parsed :class:`~.parser.model.ModelResult`"""
         track_items: list[TrackItem] = []
         for i, parsed in enumerate(model.iter_records_by_type(ParsedOutFull, ParsedInFull)):
             track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed)
@@ -147,6 +164,7 @@ class Flight(NamedTuple):
         )
 
     def save(self, path: Path|str) -> None:
+        """Save the flight data to a JSON file at the given path"""
         path = Path(path)
         path.write_text(json.dumps(self.serialize(), indent=2))
     # def save(self, config: Config) -> None:
@@ -158,6 +176,7 @@ class Flight(NamedTuple):
 
     @classmethod
     def load(cls, path: Path|str) -> Self:
+        """Load flight data from a JSON file at the given path"""
         path = Path(path)
         data = json.loads(path.read_text())
         return cls.deserialize(data)
@@ -171,6 +190,7 @@ class Flight(NamedTuple):
         return data_dir / f'{base_name}.json'
 
     def search_videos(self, config: Config) -> bool:
+        """Search for video files associated with this flight"""
         cache_data = VideoCacheData.load_from_cache(config)
         changed = False
         for item in self.video_items:
@@ -332,24 +352,47 @@ class BatterySummary(NamedTuple):
 
 
 class TrackItem(NamedTuple):
+    """A single track item recorded during a flight"""
     index: int
+    """The item index"""
     time: datetime.datetime
-    time_offset: float  # seconds since start of flight
+    """The item datetime"""
+    time_offset: float
+    """The item time offset in seconds since the flight's :attr:`~Flight.start_time`"""
     location: LatLon|None
+    """The drone's location at this time, or None if not available"""
     altitude: float
+    """The drone's altitude in meters"""
     drone_orientation: Orientation[Literal['degrees']]
+    """The drone's orientation (pitch, roll, yaw) in degrees"""
     gimbal_orientation: Orientation[Literal['degrees']]
+    """The gimbal's orientation (pitch, roll, yaw) in degrees"""
     speed: Speed
-    relative_location: PositionMeters|None  # in meters from start location
-    distance: float|None  # in meters from start location
+    """The drone's speed in m/s"""
+    relative_location: PositionMeters|None
+    """The drone's location relative to the flight :attr:`~Flight.start_location`
+    in meters, or None if :attr:`location` is not available
+    """
+    distance: float|None
+    """The distance from the :attr:`~Flight.start_location` in meters,
+    or None if :attr:`location` is not available
+    """
     phone_heading: float
+    """The phone's heading (units are unknown)"""
     max_error: int
+    """The maximum error (value format is unknown)"""
     gps_signal_level: int|None
+    """The GPS signal level (possibly 0-5), or None if not available"""
     flight_controls: FlightControl
+    """The flight control inputs at this time"""
     battery: BatteryInfo
+    """The battery information at this time"""
     radar: RadarInfo
+    """The radar information at this time"""
     rc_info: RCInfo
+    """The RC information at this time"""
     warnings: Warnings
+    """The warnings active at this time"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -379,6 +422,7 @@ class TrackItem(NamedTuple):
         start_time: datetime.datetime,
         parsed: ParsedOutFull|ParsedInFull
     ) -> Self:
+        """Create an instance from a parsed record"""
         if isinstance(parsed, ParsedOutFull):
             home_location = LatLonAlt(
                 parsed.home_location.latitude,
@@ -466,13 +510,21 @@ class TrackItem(NamedTuple):
 
 @dataclass
 class VideoItem:
+    """Represents a video item in the flight data."""
     filename: str
+    """The video filename. This does not match the files stored on the SD card."""
     local_filename: Path|None
+    """The local path to the video file, if found."""
     start_time: datetime.datetime
-    start_time_offset: float  # seconds since start of flight
+    """The start time of the video."""
+    start_time_offset: float
+    """The start time offset in seconds since the flight's :attr:`~Flight.start_time`"""
     location: LatLon
+    """The location when recording started"""
     duration: datetime.timedelta
+    """The duration of the video"""
     fps: Fraction|None
+    """The frame rate of the video, if known"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -487,20 +539,24 @@ class VideoItem:
 
     @property
     def end_time(self) -> datetime.datetime:
+        """The end time of the video."""
         return self.start_time + self.duration
 
     @property
     def end_time_offset(self) -> float:
+        """The end time offset in seconds since the flight's :attr:`~Flight.start_time`"""
         return self.start_time_offset + self.duration.total_seconds()
 
     @property
     def fps_float(self) -> float|None:
+        """The frame rate as a float, or None if not known"""
         if self.fps is None:
             return None
         return float(self.fps)
 
     @property
     def fps_str(self) -> str|None:
+        """The frame rate as a string, or None if not known"""
         if self.fps is None:
             return None
         return f"{self.fps.numerator}/{self.fps.denominator}"
@@ -509,6 +565,7 @@ class VideoItem:
     def from_parsed(
         cls, flight_start_time: datetime.datetime, parsed: ParsedVideo
     ) -> Self:
+        """Create an instance from a parsed record"""
         start_time_offset = parsed.timestamp - flight_start_time
         return cls(
             filename=parsed.filename,
@@ -545,10 +602,15 @@ class VideoItem:
 
 
 class ImageItem(NamedTuple):
+    """Represents an image item in the flight data."""
     filename: str
+    """The image filename."""
     time: datetime.datetime
-    time_offset: float  # seconds since start of flight
+    """The time when the image was taken."""
+    time_offset: float
+    """The time offset in seconds since the flight's :attr:`~Flight.start_time`"""
     location: LatLon
+    """The location when the image was taken."""
 
     class SerializeTD(TypedDict):
         """:meta private:"""

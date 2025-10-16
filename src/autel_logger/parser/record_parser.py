@@ -17,11 +17,17 @@ IS_LE = True
 
 
 class ParseResult(NamedTuple):
+    """Result containing parsed data from a binary log file"""
     filename: str
+    """Name of the log file"""
     header: ParsedHeadTD
+    """The parsed header record"""
     records: ParsedRecordsTD
+    """All parsed records, grouped by type"""
     record_tracks: dict[RecordTypeName, RecordTrack]
+    """Tracking information for each record type"""
     total_records: int
+    """Total number of records parsed (excluding header)"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -82,6 +88,7 @@ def read_string(data: DataView, offset: int, length: int) -> str:
 
 
 class RecordTrack[T: RecordTypeName]:
+    """Tracks the offsets of records of a specific type within a log file"""
     class SerializeTD(TypedDict):
         """:meta private:"""
         name: T
@@ -96,21 +103,26 @@ class RecordTrack[T: RecordTypeName]:
 
     @property
     def name(self) -> T:
+        """Name of the record type"""
         return self.__name
 
     @property
     def size(self) -> int:
+        """Size of the record in bytes (excluding type ID)"""
         return self.__size
 
     @property
     def offsets(self) -> list[int]:
+        """List of offsets in the log file for this record type"""
         return self.__offsets
 
     @property
     def count(self) -> int:
+        """Number of records of this type"""
         return len(self.__offsets)
 
     def append(self, offset: int) -> None:
+        """Add a new record offset to the track"""
         self.__offsets.append(offset)
 
     def serialize(self) -> SerializeTD:
@@ -203,6 +215,12 @@ def get_record_tracks(in_data: DataView) -> dict[RecordTypeName, RecordTrack]:
 
 
 def parse_log_data(in_data: bytes|DataView, filename: str) -> ParseResult:
+    """Parse binary log data from bytes or memoryview
+
+    Arguments:
+        in_data: Binary log data as bytes or memoryview
+        filename: Name of the log file (for reference in results)
+    """
     if not isinstance(in_data, memoryview):
         data: memoryview[bytes] = memoryview(in_data)
     else:
@@ -244,7 +262,8 @@ def parse_log_data(in_data: bytes|DataView, filename: str) -> ParseResult:
 
 
 
-def parse_log_file(file_path: Path|str):# -> ParseResult:
+def parse_log_file(file_path: Path|str) -> ParseResult:
+    """Parse a binary log file from the given file path"""
     path = Path(file_path)
     with path.open('rb') as f:
         data = f.read()

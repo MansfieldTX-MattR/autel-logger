@@ -24,10 +24,15 @@ DATA_DIR = Path(DIRS.user_data_dir)
 
 
 class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
+    """A path to search for media files of a specific type"""
     path: Path
+    """The directory to search"""
     type: T
+    """The type of media to search for ('video' or 'image')"""
     glob_pattern: str|None = None
+    """An optional glob pattern to filter files (e.g. 'MAX_*.MOV')"""
     recursive: bool = False
+    """Whether to search recursively in subdirectories"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -56,18 +61,25 @@ class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
 
 @dataclass
 class Config:
+    """Configuration storage"""
     raw_log_dir: Path|None = None
+    """Directory to store parsed log files"""
     data_dir: Path = DATA_DIR
     cache_dir: Path = CACHE_DIR
+    """Directory to store cached data (such as video metadata)"""
     blender_export_dir: Path|None = None
+    """Directory to export Blender json files to"""
     video_search_paths: list[MediaSearchPath[Literal['video']]] = field(
         default_factory=list
     )
+    """List of directories to search for video files"""
     image_search_paths: list[MediaSearchPath[Literal['image']]] = field(
         default_factory=list
     )
+    """List of directories to search for image files"""
 
     DEFAULT_FILENAME: ClassVar[Path] = CONFIG_PATH
+    """Default configuration file path"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -112,6 +124,7 @@ class Config:
 
     @classmethod
     def load(cls, path: Path|str = DEFAULT_FILENAME) -> Self:
+        """Load configuration from a file, or return default if file does not exist"""
         path = Path(path)
         if not path.exists():
             return cls()
@@ -119,6 +132,7 @@ class Config:
         return cls.deserialize(data)
 
     def save(self, filename: Path|str = DEFAULT_FILENAME) -> None:
+        """Save configuration to a file"""
         filename = Path(filename)
         if not filename.parent.exists():
             filename.parent.mkdir(parents=True, exist_ok=True)
@@ -139,6 +153,7 @@ class Config:
         glob_pattern: str|None = None,
         recursive: bool = False
     ) -> MediaSearchPath[T]:
+        """Add a new media search path to the configuration and save it"""
         path = Path(path).expanduser().resolve()
         if not path.is_dir():
             raise ValueError(f'Path {path} is not a directory')

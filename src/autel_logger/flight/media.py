@@ -27,6 +27,7 @@ class MediaParseError(ValueError):
 
 @logger.catch(reraise=True)
 def get_video_duration_and_fps(path: Path) -> tuple[datetime.timedelta|None, Fraction|None]:
+    """Get video duration and frame rate using ffprobe"""
     # try:
     result = subprocess.run(
         ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
@@ -62,10 +63,15 @@ def get_video_duration_and_fps(path: Path) -> tuple[datetime.timedelta|None, Fra
 
 
 class CameraSettings(NamedTuple):
+    """Represents the camera settings for a video frame."""
     iso: int
+    """The ISO setting of the camera."""
     shutter: int  # in 1/x seconds
+    """The shutter speed of the camera in 1/x seconds."""
     ev: float
+    """The exposure value (EV) of the camera."""
     f_num: float
+    """The f-number (aperture) of the camera."""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -92,15 +98,35 @@ class CameraSettings(NamedTuple):
         )
 
 class SubtitleEntry(NamedTuple):
+    """Represents a single subtitle entry from a video's subtitle stream.
+
+    This includes timestamp, GPS coordinates, camera settings, and orientations
+    taken each second during video recording.
+    """
     index: int
-    start_pts: float  # in seconds
-    end_pts: float    # in seconds
+    """The index of the subtitle entry."""
+    start_pts: float
+    """The start time of the subtitle entry in seconds."""
+    end_pts: float
+    """The end time of the subtitle entry in seconds."""
     datetime: datetime.datetime
+    """The datetime when the subtitle entry was recorded."""
     home_coords: LatLon
+    """The home coordinates (latitude and longitude) of the drone."""
     gps_coords: LatLonAlt
+    """The current location of the drone (latitude, longitude, altitude).
+
+    .. note::
+
+        Altitude is in MSL (mean sea level), not AGL (above ground level) and
+        stored as meters.
+    """
     camera_settings: CameraSettings
+    """The camera settings at the time of the subtitle entry."""
     f_pry: Orientation[Literal['degrees']]
+    """The drone's orientation (pitch, roll, yaw) in degrees."""
     g_pry: Orientation[Literal['degrees']]
+    """The gimbal's orientation (pitch, roll, yaw) in degrees."""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -270,7 +296,9 @@ class SubtitleEntry(NamedTuple):
 # ffmpeg -i MAX_0009.MOV -map 0:s:0 -vn -an  MAX_0008.srt
 @logger.catch(reraise=True)
 def get_video_subtitles(path: Path) -> list[SubtitleEntry]:
-    """Subtitle stream includes entries formatted like:
+    """Get a list of :class:`SubtitleEntry` from the video's subtitle stream.
+
+    Subtitle stream includes entries formatted like:
 
     .. code-block:: text
 
@@ -336,10 +364,18 @@ def get_video_subtitles(path: Path) -> list[SubtitleEntry]:
 
 @dataclass
 class VideoFileInfo:
+    """Metadata and subtitle information for a video file."""
     filename: Path
+    """Local path to the video file."""
     duration: datetime.timedelta
+    """The actual duration of the video.
+
+    This may differ from the duration recorded in the flight log.
+    """
     fps: Fraction
+    """The frame rate of the video as a fraction (e.g., 30/1)."""
     subtitle_entries: list[SubtitleEntry]
+    """List of subtitle entries extracted from the video's subtitle stream."""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -369,6 +405,7 @@ class VideoFileInfo:
 
     @classmethod
     def from_file(cls, path: Path) -> Self:
+        """Create an instance by analyzing the given video file."""
         duration, fps = get_video_duration_and_fps(path)
         if duration is None or fps is None:
             raise ValueError(f"Could not get duration or fps for video file: {path}")
@@ -382,29 +419,39 @@ class VideoFileInfo:
 
     @property
     def fps_float(self) -> float:
+        """:attr:`fps` as a float."""
         return float(self.fps)
 
     @property
     def fps_str(self) -> str:
+        """:attr:`fps` as a string fraction, e.g. "30/1"."""
         return f"{self.fps.numerator}/{self.fps.denominator}"
 
     @property
     def start_time(self) -> datetime.datetime|None:
+        """The start time of the video based on the first subtitle entry, or None if no subtitles."""
         if not self.subtitle_entries:
             return None
         return self.subtitle_entries[0].datetime
 
 
 class SearchResult[T](NamedTuple):
+    """Represents a search result for a media file."""
     item: T
+    """The :class:`VideoFileInfo` or :class:`ImageFileInfo` item found."""
     search_path: MediaSearchPath
+    """The :class:`~.config.MediaSearchPath` where the item was found."""
     confidence: float
+    """The confidence score of the search result."""
 
 
 @dataclass
 class VideoCacheData:
+    """Cache of video file metadata to speed up searches."""
     video_files: list[VideoFileInfo] = field(default_factory=list)
+    """List of cached video files."""
     files_by_path: dict[Path, VideoFileInfo] = field(init=False)
+    """Mapping of file paths to :class:`VideoFileInfo` for quick lookup."""
 
     def __post_init__(self) -> None:
         self.files_by_path = {vf.filename: vf for vf in self.video_files}
@@ -426,6 +473,7 @@ class VideoCacheData:
 
     @classmethod
     def load_from_cache(cls, config: Config) -> Self:
+        """Load cache data from the configured cache directory."""
         cache_path = config.cache_dir / 'video_cache.json'
         if not cache_path.exists():
             return cls()
@@ -434,12 +482,14 @@ class VideoCacheData:
         return cls.deserialize(data)
 
     def save_to_cache(self, config: Config) -> None:
+        """Save cache data to the configured cache directory."""
         cache_path = config.cache_dir / 'video_cache.json'
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         data = self.serialize()
         cache_path.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
     def add_file(self, path: Path) -> VideoFileInfo:
+        """Add a video file to the cache by analyzing it."""
         video_info = VideoFileInfo.from_file(path)
         self.video_files.append(video_info)
         self.files_by_path[path] = video_info
@@ -482,6 +532,7 @@ class VideoCacheData:
         config: Config,
         ignore_cache: bool = False,
     ) -> list[SearchResult[VideoFileInfo]]:
+        """Search for video files matching the given :class:`~.flight.VideoItem`."""
         return self.search(
             start_time=item.start_time,
             duration=item.duration,
@@ -496,6 +547,10 @@ class VideoCacheData:
         config: Config,
         ignore_cache: bool = False,
     ) -> list[SearchResult[VideoFileInfo]]:
+        """Search for video files matching the given start time and duration.
+
+        If an item is not found in the cache, it will be analyzed and added.
+        """
         results = []
         start_time_max_delta = datetime.timedelta(seconds=5)
         for search_path, path in self._iter_video_files(config):
