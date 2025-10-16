@@ -27,3 +27,8 @@ dev = [
     "fake-bpy-module-latest>=20250926",
     "ipython>=9.5.0",
 ]
+doc = [
+    "furo>=2025.9.25",
+    "sphinx>=8.2.3",
+    "sphinx-click>=6.1.0",
+]
