@@ -23,7 +23,6 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "clipboard>=0.0.4",
     "fake-bpy-module-latest>=20250926",
     "ipython>=9.5.0",
 ]
