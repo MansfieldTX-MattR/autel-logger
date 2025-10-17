@@ -21,11 +21,6 @@ def animate_objects(
     context: bpy.types.Context,
     initial: bool,
 ) -> None:
-    def set_active_object(obj: bpy.types.Object) -> None:
-        bpy.ops.object.select_all(action='DESELECT')
-        obj.select_set(True)
-        assert context.view_layer is not None
-        context.view_layer.objects.active = obj
     def clear_all_keyframes(obj: bpy.types.Object) -> None:
         if obj.animation_data is not None and obj.animation_data.action is not None:
             obj.animation_data_clear()
@@ -45,7 +40,6 @@ def animate_objects(
     try:
         for item in flight_props.track_items:
             frame = item.frame
-            scene.frame_set(frame=int(frame), subframe=frame % 1)
             if item.has_location:
                 drone_obj.location.x = item.relative_location[0]
                 drone_obj.location.y = item.relative_location[1]
@@ -55,14 +49,12 @@ def animate_objects(
                 gimbal_obj.location.z = item.relative_height
             drone_obj.rotation_euler = item.drone_orientation
             gimbal_obj.rotation_euler = item.gimbal_orientation
-            set_active_object(drone_obj)
             if item.has_location:
-                bpy.ops.anim.keyframe_insert(type='Location')
-            bpy.ops.anim.keyframe_insert(type='Rotation')
-            set_active_object(gimbal_obj)
+                drone_obj.keyframe_insert('location', frame=frame)
+            drone_obj.keyframe_insert('rotation_euler', frame=frame)
             if item.has_location:
-                bpy.ops.anim.keyframe_insert(type='Location')
-            bpy.ops.anim.keyframe_insert(type='Rotation')
+                gimbal_obj.keyframe_insert('location', frame=frame)
+            gimbal_obj.keyframe_insert('rotation_euler', frame=frame)
     finally:
         scene.frame_set(current_frame)
 
