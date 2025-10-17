@@ -11,7 +11,7 @@ from loguru import logger
 from ..spatial import LatLon, LatLonAlt, GeoBox, PositionMeters, Vector3D, Speed, Orientation
 from ..parser.model import (
     ModelResult, ParsedOutFull, ParsedInFull, ParsedVideo, ParsedImage, FlightControl,
-    RadarInfo, Warnings, RCInfo, BatteryInfo,
+    FlightControlsCalibration, RadarInfo, Warnings, RCInfo, BatteryInfo,
 )
 from ..config import Config
 from .media import VideoCacheData
@@ -46,6 +46,8 @@ class Flight(NamedTuple):
     """The starting location of the flight"""
     bounding_box: GeoBox
     """The bounding box of the flight path"""
+    flight_controls_calibration: FlightControlsCalibration
+    """The flight controls calibration data"""
     track_items: list[TrackItem]
     """The detailed track items recorded during the flight"""
     video_items: list[VideoItem]
@@ -67,6 +69,7 @@ class Flight(NamedTuple):
         battery_summary: BatterySummary.SerializeTD
         start_location: LatLon.SerializeTD
         bounding_box: GeoBox.SerializeTD
+        flight_controls_calibration: FlightControlsCalibration.SerializeTD
         osm_url: str
         track_items: list[TrackItem.SerializeTD]
         video_items: list[VideoItem.SerializeTD]
@@ -79,9 +82,13 @@ class Flight(NamedTuple):
     @classmethod
     def from_model(cls, model: ModelResult) -> Self:
         """Create a Flight instance from a parsed :class:`~.parser.model.ModelResult`"""
+        calibration = FlightControlsCalibration.from_records(*(
+            parsed.flight_control
+            for parsed in model.iter_records_by_type(ParsedOutFull, ParsedInFull)
+        ))
         track_items: list[TrackItem] = []
         for i, parsed in enumerate(model.iter_records_by_type(ParsedOutFull, ParsedInFull)):
-            track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed)
+            track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed, calibration)
             track_items.append(track_item)
         # for i, parsed in enumerate(model.iter_sorted_records('out_full')):
         #     track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed)
@@ -112,6 +119,7 @@ class Flight(NamedTuple):
             battery_summary=BatterySummary.from_records(model.header.battery_sn, track_items),
             start_location=model.header.start_location,
             bounding_box=bbox,
+            flight_controls_calibration=calibration,
             track_items=track_items,
             video_items=video_items,
             image_items=image_items,
@@ -131,6 +139,7 @@ class Flight(NamedTuple):
             'battery_summary': self.battery_summary.serialize(),
             'start_location': self.start_location.serialize(),
             'bounding_box': self.bounding_box.serialize(),
+            'flight_controls_calibration': self.flight_controls_calibration.serialize(),
             'osm_url': self.osm_url,
             'track_items': [item.serialize() for item in self.track_items],
             'video_items': [item.serialize() for item in self.video_items],
@@ -152,6 +161,9 @@ class Flight(NamedTuple):
             battery_summary=BatterySummary.deserialize(data['battery_summary']),
             start_location=LatLon.deserialize(data['start_location']),
             bounding_box=GeoBox.deserialize(data['bounding_box']),
+            flight_controls_calibration=FlightControlsCalibration.deserialize(
+                data['flight_controls_calibration']
+            ),
             track_items=[
                 TrackItem.deserialize(item) for item in data['track_items']
             ],
@@ -385,6 +397,8 @@ class TrackItem(NamedTuple):
     """The GPS signal level (possibly 0-5), or None if not available"""
     flight_controls: FlightControl
     """The flight control inputs at this time"""
+    flight_controls_calibrated: bool
+    """Whether the flight controls have been calibrated (normalized)"""
     battery: BatteryInfo
     """The battery information at this time"""
     radar: RadarInfo
@@ -410,6 +424,7 @@ class TrackItem(NamedTuple):
         max_error: int
         gps_signal_level: int|None
         flight_controls: FlightControl.SerializeTD
+        flight_controls_calibrated: bool
         battery: BatteryInfo.SerializeTD
         radar: RadarInfo.SerializeTD
         rc_info: RCInfo.SerializeTD
@@ -420,7 +435,8 @@ class TrackItem(NamedTuple):
         cls,
         index: int,
         start_time: datetime.datetime,
-        parsed: ParsedOutFull|ParsedInFull
+        parsed: ParsedOutFull|ParsedInFull,
+        calibration: FlightControlsCalibration|None = None,
     ) -> Self:
         """Create an instance from a parsed record"""
         if isinstance(parsed, ParsedOutFull):
@@ -442,6 +458,11 @@ class TrackItem(NamedTuple):
             location = None
             gps_signal_level = None
         altitude = parsed.drone_altitude
+        flight_control = parsed.flight_control
+        flight_controls_calibrated = False
+        if calibration is not None and calibration.can_calibrate:
+            flight_control = parsed.flight_control.normalize(calibration)
+            flight_controls_calibrated = True
         return cls(
             index=index,
             time=start_time + datetime.timedelta(seconds=parsed.timestamp),
@@ -456,7 +477,8 @@ class TrackItem(NamedTuple):
             phone_heading=parsed.phone_heading,
             max_error=parsed.max_error,
             gps_signal_level=gps_signal_level,
-            flight_controls=parsed.flight_control.with_offset(),
+            flight_controls=flight_control,
+            flight_controls_calibrated=flight_controls_calibrated,
             battery=parsed.battery_info,
             radar=parsed.radar_info,
             rc_info=parsed.rc_info,
@@ -479,6 +501,7 @@ class TrackItem(NamedTuple):
             'max_error': self.max_error,
             'gps_signal_level': self.gps_signal_level,
             'flight_controls': self.flight_controls.serialize(),
+            'flight_controls_calibrated': self.flight_controls_calibrated,
             'battery': self.battery.serialize(),
             'radar': self.radar.serialize(),
             'rc_info': self.rc_info.serialize(),
@@ -502,6 +525,7 @@ class TrackItem(NamedTuple):
             max_error=data['max_error'],
             gps_signal_level=data['gps_signal_level'],
             flight_controls=FlightControl.deserialize(data['flight_controls']),
+            flight_controls_calibrated=data['flight_controls_calibrated'],
             battery=BatteryInfo.deserialize(data['battery']),
             radar=RadarInfo.deserialize(data['radar']),
             rc_info=RCInfo.deserialize(data['rc_info']),

@@ -127,9 +127,18 @@ class StickPosition(NamedTuple):
         horizontal: float
         vertical: float
 
-    def with_offset(self, h_offset: float = 1024, v_offset: float = 1024) -> Self:
-        """Return a new StickPosition with the given offsets applied"""
-        return self - (h_offset, v_offset)
+    def normalize(self, calibration: StickCalibration) -> Self:
+        """Normalize the stick position to the range of ``-1`` to ``1`` using
+        the given calibration data
+        """
+        offset = calibration.center
+        scale = StickPosition(
+            calibration.negative_scale.horizontal if self.horizontal < calibration.center.horizontal
+            else calibration.positive_scale.horizontal,
+            calibration.negative_scale.vertical if self.vertical < calibration.center.vertical
+            else calibration.positive_scale.vertical,
+        )
+        return (self - offset) * scale
 
     def serialize(self) -> SerializeTD:
         return {
@@ -162,10 +171,156 @@ class StickPosition(NamedTuple):
             x = y = other
         return self.__class__(self.horizontal - x, self.vertical - y)
 
+    def __mul__(self, other: StickPosition|tuple[float, float]|float) -> Self:
+        if isinstance(other, StickPosition):
+            x, y = other.horizontal, other.vertical
+        elif isinstance(other, tuple):
+            x, y = other
+        else:
+            x = y = other
+        return self.__class__(self.horizontal * x, self.vertical * y)
+
+    def __truediv__(self, other: StickPosition|tuple[float, float]|float) -> Self:
+        if isinstance(other, StickPosition):
+            x, y = other.horizontal, other.vertical
+        elif isinstance(other, tuple):
+            x, y = other
+        else:
+            x = y = other
+        return self.__class__(self.horizontal / x, self.vertical / y)
+
+    def __rtruediv__(self, other: StickPosition|tuple[float, float]|float) -> Self:
+        if isinstance(other, StickPosition):
+            x, y = other.horizontal, other.vertical
+        elif isinstance(other, tuple):
+            x, y = other
+        else:
+            x = y = other
+        return self.__class__(x / self.horizontal, y / self.vertical)
+
     def __abs__(self) -> float:
         return (self.horizontal**2 + self.vertical**2)**0.5
 
 
+class StickCalibration(NamedTuple):
+    """Calibration data for a control stick on the RC"""
+    min: StickPosition
+    """Minimum stick position"""
+    max: StickPosition
+    """Maximum stick position"""
+    center: StickPosition = StickPosition(1024, 1024)
+    """Center stick position"""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        min: StickPosition.SerializeTD
+        max: StickPosition.SerializeTD
+        center: StickPosition.SerializeTD
+
+    @property
+    def negative_divisor(self) -> StickPosition:
+        """Divisors for negative stick movement"""
+        return self.center - self.min
+
+    @property
+    def positive_divisor(self) -> StickPosition:
+        """Divisors for positive stick movement"""
+        return self.max - self.center
+
+    @property
+    def negative_scale(self) -> StickPosition:
+        """Scale factors for negative stick movement"""
+        return 1 / self.negative_divisor
+
+    @property
+    def positive_scale(self) -> StickPosition:
+        """Scale factors for positive stick movement"""
+        return 1 / self.positive_divisor
+
+    @property
+    def can_calibrate(self) -> bool:
+        """Whether the calibration data is valid for normalizing stick positions"""
+        neg_div = self.negative_divisor
+        pos_div = self.positive_divisor
+        return (
+            neg_div.horizontal != 0 and neg_div.vertical != 0 and
+            pos_div.horizontal != 0 and pos_div.vertical != 0
+        )
+
+    @classmethod
+    def from_records(cls, *records: StickPosition) -> Self:
+        """Create a StickCalibration from multiple StickPosition records
+        """
+        center = StickPosition(1024, 1024)
+        min_pos = center
+        max_pos = center
+        for record in records:
+            min_pos = StickPosition(
+                min(min_pos.horizontal, record.horizontal),
+                min(min_pos.vertical, record.vertical),
+            )
+            max_pos = StickPosition(
+                max(max_pos.horizontal, record.horizontal),
+                max(max_pos.vertical, record.vertical),
+            )
+        return cls(min=min_pos, max=max_pos, center=center)
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            min=self.min.serialize(),
+            max=self.max.serialize(),
+            center=self.center.serialize(),
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            min=StickPosition.deserialize(data['min']),
+            max=StickPosition.deserialize(data['max']),
+            center=StickPosition.deserialize(data['center']),
+        )
+
+
+class FlightControlsCalibration(NamedTuple):
+    """Calibration data for both control sticks on the RC"""
+    left_stick: StickCalibration
+    """Left stick calibration"""
+    right_stick: StickCalibration
+    """Right stick calibration"""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        left_stick: StickCalibration.SerializeTD
+        right_stick: StickCalibration.SerializeTD
+
+    @property
+    def can_calibrate(self) -> bool:
+        """Whether the calibration data is valid for normalizing stick positions"""
+        return self.left_stick.can_calibrate and self.right_stick.can_calibrate
+
+    @classmethod
+    def from_records(cls, *records: FlightControl) -> Self:
+        """Create a FlightControlsCalibration from multiple FlightControl records
+        """
+        left_stick_records = [record.left_stick for record in records]
+        right_stick_records = [record.right_stick for record in records]
+        return cls(
+            left_stick=StickCalibration.from_records(*left_stick_records),
+            right_stick=StickCalibration.from_records(*right_stick_records),
+        )
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            left_stick=self.left_stick.serialize(),
+            right_stick=self.right_stick.serialize(),
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            left_stick=StickCalibration.deserialize(data['left_stick']),
+            right_stick=StickCalibration.deserialize(data['right_stick']),
+        )
 
 
 class FlightControl(NamedTuple):
@@ -200,9 +355,14 @@ class FlightControl(NamedTuple):
             StickPosition(data['m_right_horizontal'], data['m_right_vertical']),
         )
 
-    def with_offset(self, h_offset: float = 1024, v_offset: float = 1024) -> Self:
-        """Return a new FlightControl with the given offsets applied to both sticks"""
-        return self - (h_offset, v_offset)
+    def normalize(self, calibration: FlightControlsCalibration) -> Self:
+        """Normalize the flight control stick positions using the given calibration data"""
+        if not calibration.can_calibrate:
+            raise ValueError(f"Cannot normalize flight controls: invalid calibration data: {calibration}")
+        return self.__class__(
+            self.left_stick.normalize(calibration.left_stick),
+            self.right_stick.normalize(calibration.right_stick),
+        )
 
     def __add__(self, other: FlightControl|tuple[float, float]|float) -> Self:
         if isinstance(other, FlightControl):
