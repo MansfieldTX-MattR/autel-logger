@@ -44,7 +44,10 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "fake-bpy-module-latest" },
+    { name = "furo" },
     { name = "ipython" },
+    { name = "sphinx" },
+    { name = "sphinx-click" },
 ]
 doc = [
     { name = "furo" },
@@ -62,7 +65,10 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "fake-bpy-module-latest", specifier = ">=20250926" },
+    { name = "furo", specifier = ">=2025.9.25" },
     { name = "ipython", specifier = ">=9.5.0" },
+    { name = "sphinx", specifier = ">=8.2.3" },
+    { name = "sphinx-click", specifier = ">=6.1.0" },
 ]
 doc = [
     { name = "furo", specifier = ">=2025.9.25" },

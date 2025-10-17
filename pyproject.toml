@@ -23,6 +23,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    {include-group = "doc"},
     "fake-bpy-module-latest>=20250926",
     "ipython>=9.5.0",
 ]
