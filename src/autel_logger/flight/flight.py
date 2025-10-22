@@ -14,11 +14,11 @@ from ..parser.model import (
     FlightControlsCalibration, RadarInfo, Warnings, RCInfo, BatteryInfo,
 )
 from ..config import Config
-from .media import VideoCacheData, ImageCacheData
+from .media import VideoCacheData, ImageCacheData, CameraInfo
 
 
-
-class Flight(NamedTuple):
+@dataclass
+class Flight:
     """A single flight log with associated metadata and records"""
     filename: str
     """The log filename"""
@@ -48,6 +48,8 @@ class Flight(NamedTuple):
     """The bounding box of the flight path"""
     flight_controls_calibration: FlightControlsCalibration
     """The flight controls calibration data"""
+    camera_info: CameraInfo|None
+    """The camera information, if available"""
     track_items: list[TrackItem]
     """The detailed track items recorded during the flight"""
     video_items: list[VideoItem]
@@ -70,6 +72,7 @@ class Flight(NamedTuple):
         start_location: LatLon.SerializeTD
         bounding_box: GeoBox.SerializeTD
         flight_controls_calibration: FlightControlsCalibration.SerializeTD
+        camera_info: CameraInfo.SerializeTD | None
         osm_url: str
         track_items: list[TrackItem.SerializeTD]
         video_items: list[VideoItem.SerializeTD]
@@ -120,6 +123,7 @@ class Flight(NamedTuple):
             start_location=model.header.start_location,
             bounding_box=bbox,
             flight_controls_calibration=calibration,
+            camera_info=None,
             track_items=track_items,
             video_items=video_items,
             image_items=image_items,
@@ -141,6 +145,7 @@ class Flight(NamedTuple):
             'bounding_box': self.bounding_box.serialize(),
             'flight_controls_calibration': self.flight_controls_calibration.serialize(),
             'osm_url': self.osm_url,
+            'camera_info': None if self.camera_info is None else self.camera_info.serialize(),
             'track_items': [item.serialize() for item in self.track_items],
             'video_items': [item.serialize() for item in self.video_items],
             'image_items': [item.serialize() for item in self.image_items],
@@ -164,6 +169,7 @@ class Flight(NamedTuple):
             flight_controls_calibration=FlightControlsCalibration.deserialize(
                 data['flight_controls_calibration']
             ),
+            camera_info=None if data['camera_info'] is None else CameraInfo.deserialize(data['camera_info']),
             track_items=[
                 TrackItem.deserialize(item) for item in data['track_items']
             ],
@@ -228,6 +234,7 @@ class Flight(NamedTuple):
         """Search for image files associated with this flight"""
         cache_data = ImageCacheData.load_from_cache(config)
         changed = False
+        camera_info: CameraInfo|None = None
         for item in self.image_items:
             logger.debug(f"Searching for image files for item {item.filename}...")
             if item.local_filename is not None:
@@ -238,10 +245,17 @@ class Flight(NamedTuple):
             best = results[0]
             if best.confidence < 0.5:
                 continue
+            if camera_info is None:
+                camera_info = best.item.camera_info
+            else:
+                assert camera_info == best.item.camera_info, "Mismatched camera info in image search"
             if best.item.filename == item.local_filename:
                 continue
             logger.info(f"Matched image file {item.filename} to {best.item.filename} with confidence {best.confidence:.2f}")
             item.local_filename = best.item.filename
+            changed = True
+        if camera_info is not None and self.camera_info != camera_info:
+            self.camera_info = camera_info
             changed = True
         return changed
 
