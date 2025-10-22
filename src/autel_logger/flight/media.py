@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypedDict, NamedTuple, Literal, Iterator, Self, TYPE_CHECKING
+from abc import ABC, abstractmethod
 from pathlib import Path
 from fractions import Fraction
 import json
@@ -609,35 +610,38 @@ class SearchResult[T](NamedTuple):
 
 
 @dataclass
-class VideoCacheData:
-    """Cache of video file metadata to speed up searches."""
-    video_files: list[VideoFileInfo] = field(default_factory=list)
-    """List of cached video files."""
-    files_by_path: dict[Path, VideoFileInfo] = field(init=False)
-    """Mapping of file paths to :class:`VideoFileInfo` for quick lookup."""
+class MediaCacheData[
+    K: Literal['video', 'image'],
+    T: VideoFileInfo | ImageFileInfo,
+    F: VideoItem | ImageItem
+](ABC):
+    """Cache of media file metadata to speed up searches."""
+    media_files: list[T] = field(default_factory=list)
+    """List of cached media files."""
+    files_by_path: dict[Path, T] = field(init=False)
+    """Mapping of file paths to media file info for quick lookup."""
 
     def __post_init__(self) -> None:
-        self.files_by_path = {vf.filename: vf for vf in self.video_files}
+        self.files_by_path = {mf.filename: mf for mf in self.media_files}
 
-    class SerializeTD(TypedDict):
-        """:meta private:"""
-        video_files: list[VideoFileInfo.SerializeTD]
-
-    def serialize(self) -> SerializeTD:
-        return self.SerializeTD(
-            video_files=[video_file.serialize() for video_file in self.video_files],
-        )
+    @abstractmethod
+    def serialize(self) -> dict:
+        raise NotImplementedError
 
     @classmethod
-    def deserialize(cls, data: SerializeTD) -> Self:
-        return cls(
-            video_files=[VideoFileInfo.deserialize(entry) for entry in data['video_files']],
-        )
+    @abstractmethod
+    def deserialize(cls, data: dict) -> Self:
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def get_cache_filename(cls) -> str:
+        raise NotImplementedError
 
     @classmethod
     def load_from_cache(cls, config: Config) -> Self:
         """Load cache data from the configured cache directory."""
-        cache_path = config.cache_dir / 'video_cache.json'
+        cache_path = config.cache_dir / cls.get_cache_filename()
         if not cache_path.exists():
             return cls()
         content = cache_path.read_text(encoding='utf-8')
@@ -646,19 +650,19 @@ class VideoCacheData:
 
     def save_to_cache(self, config: Config) -> None:
         """Save cache data to the configured cache directory."""
-        cache_path = config.cache_dir / 'video_cache.json'
+        cache_path = config.cache_dir / self.get_cache_filename()
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         data = self.serialize()
         cache_path.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
-    def add_file(self, path: Path) -> VideoFileInfo:
-        """Add a video file to the cache by analyzing it."""
-        video_info = VideoFileInfo.from_file(path)
-        self.video_files.append(video_info)
-        self.files_by_path[path] = video_info
-        return video_info
+    def add_file(self, path: Path) -> T:
+        """Add a media file to the cache by analyzing it."""
+        media_info = self.parse_file(path)
+        self.media_files.append(media_info)
+        self.files_by_path[path] = media_info
+        return media_info
 
-    def _iter_video_files(self, config: Config) -> Iterator[tuple[MediaSearchPath[Literal['video']], Path]]:
+    def _iter_media_files(self, config: Config) -> Iterator[tuple[MediaSearchPath[K], Path]]:
         seen = set()
         def _search(search_path: MediaSearchPath) -> Iterator[Path]:
             for item in search_path.path.iterdir():
@@ -675,7 +679,7 @@ class VideoCacheData:
                 if item in seen:
                     continue
                 mime_type, _ = mimetypes.guess_type(item)
-                if mime_type is None or not mime_type.startswith('video'):
+                if mime_type is None or not self._check_mime_type(mime_type):
                     continue
                 if search_path.glob_pattern is not None:
                     if not fnmatch.fnmatch(item.name, search_path.glob_pattern):
@@ -683,40 +687,59 @@ class VideoCacheData:
                 seen.add(item)
                 yield item
 
-        for search_path in config.video_search_paths:
+        for search_path in self._iter_search_paths(config):
             # logger.debug(f"Searching for video files in {search_path.path}...")
             assert search_path.path.is_absolute()
             for p in _search(search_path):
                 yield search_path, p
 
+    @classmethod
+    @abstractmethod
+    def _iter_search_paths(cls, config: Config) -> Iterator[MediaSearchPath[K]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def _check_mime_type(self, mime_type: str) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def _calc_confidence(
+        self,
+        media_info: T,
+        start_time: datetime.datetime,
+        duration: datetime.timedelta,
+        location: LatLonAlt|LatLon|None = None,
+    ) -> float|None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_file(self, path: Path) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def search_from_flight_item(
         self,
-        item: VideoItem,
+        item: F,
         config: Config,
         ignore_cache: bool = False,
-    ) -> list[SearchResult[VideoFileInfo]]:
-        """Search for video files matching the given :class:`~.flight.VideoItem`."""
-        return self.search(
-            start_time=item.start_time,
-            duration=item.duration,
-            config=config,
-            ignore_cache=ignore_cache,
-        )
+    ) -> list[SearchResult[T]]:
+        raise NotImplementedError
 
     def search(
         self,
         start_time: datetime.datetime,
         duration: datetime.timedelta,
         config: Config,
+        location: LatLonAlt|LatLon|None = None,
         ignore_cache: bool = False,
-    ) -> list[SearchResult[VideoFileInfo]]:
-        """Search for video files matching the given start time and duration.
+    ) -> list[SearchResult[T]]:
+        """Search for media files matching the given criteria.
 
         If an item is not found in the cache, it will be analyzed and added.
         """
         results = []
         start_time_max_delta = datetime.timedelta(seconds=5)
-        for search_path, path in self._iter_video_files(config):
+        for search_path, path in self._iter_media_files(config):
             # path_mtime = datetime.datetime.fromtimestamp(path.stat().st_mtime)
             # path_mdelta = abs(path_mtime - start_time)
             # if path_mdelta > start_time_max_delta:
@@ -737,16 +760,9 @@ class VideoCacheData:
                 #     raise
                 #     continue
                 self.save_to_cache(config)
-            if abs(cached.duration - duration) > datetime.timedelta(seconds=5):
-                # logger.debug(f"Skipping {path} due to duration mismatch (file: {cached.duration}, expected: {duration})")
+            confidence = self._calc_confidence(cached, start_time, duration, location=location)
+            if confidence is None:
                 continue
-            vid_start = cached.start_time
-            if vid_start is None:
-                # logger.debug(f"Skipping {path} due to missing start time")
-                continue
-            confidence = 1.0 - (abs((vid_start - start_time).total_seconds()) / start_time_max_delta.total_seconds())
-            # confidence = 1.0 - (path_mdelta.total_seconds() / start_time_max_delta.total_seconds())
-            # logger.debug(f"Video file {path} has confidence {confidence}")
             results.append(SearchResult(
                 item=cached,
                 search_path=search_path,
@@ -754,3 +770,75 @@ class VideoCacheData:
             ))
         results.sort(key=lambda r: r.confidence, reverse=True)
         return results
+
+
+@dataclass
+class VideoCacheData(MediaCacheData[
+    Literal['video'],
+    VideoFileInfo,
+    'VideoItem',
+]):
+    """Cache of video file metadata to speed up searches."""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        video_files: list[VideoFileInfo.SerializeTD]
+
+    @classmethod
+    def get_cache_filename(cls) -> str:
+        return 'video_cache.json'
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            video_files=[media_file.serialize() for media_file in self.media_files],
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            media_files=[VideoFileInfo.deserialize(entry) for entry in data['video_files']],
+        )
+
+    @classmethod
+    def _iter_search_paths(cls, config: Config) -> Iterator[MediaSearchPath[Literal['video']]]:
+        yield from config.video_search_paths
+
+    def parse_file(self, path: Path) -> VideoFileInfo:
+        return VideoFileInfo.from_file(path)
+
+    def _check_mime_type(self, mime_type: str) -> bool:
+        return mime_type.startswith('video/')
+
+    def _calc_confidence(
+        self,
+        media_info: VideoFileInfo,
+        start_time: datetime.datetime,
+        duration: datetime.timedelta,
+        location: LatLonAlt|LatLon|None = None
+    ) -> float|None:
+        start_time_max_delta = datetime.timedelta(seconds=5)
+        if abs(media_info.duration - duration) > datetime.timedelta(seconds=5):
+            # logger.debug(f"Skipping {path} due to duration mismatch (file: {media_info.duration}, expected: {duration})")
+            return None
+        vid_start = media_info.start_time
+        if vid_start is None:
+            # logger.debug(f"Skipping {path} due to missing start time")
+            return None
+
+        if media_info.start_time is None:
+            return None
+        return 1.0 - (abs((vid_start - start_time).total_seconds()) / start_time_max_delta.total_seconds())
+
+    def search_from_flight_item(
+        self,
+        item: 'VideoItem',
+        config: Config,
+        ignore_cache: bool = False,
+    ) -> list[SearchResult[VideoFileInfo]]:
+        """Search for video files matching the given :class:`~.flight.VideoItem`."""
+        return self.search(
+            start_time=item.start_time,
+            duration=item.duration,
+            config=config,
+            ignore_cache=ignore_cache,
+        )
