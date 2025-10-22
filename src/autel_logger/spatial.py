@@ -343,6 +343,10 @@ class LatLonAlt(NamedTuple):
             altitude=data['altitude'],
         )
 
+    def to_latlon(self) -> LatLon:
+        """Convert to a LatLon instance by dropping altitude."""
+        return LatLon(self.latitude, self.longitude)
+
     def distance_to(self, other: LatLon|LatLonAlt) -> float:
         """Calculate the 3D distance in meters to another LatLonAlt point."""
         horizontal_distance = LatLon(self.latitude, self.longitude).distance_to(

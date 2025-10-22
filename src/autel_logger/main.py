@@ -195,8 +195,11 @@ def list_data_files(ctx: ClickContext):
 @click.argument('input_file', type=click.Path(
     exists=True, dir_okay=False, path_type=Path,
 ))
-@click.option('--process-videos', is_flag=True, default=True,
+@click.option('--process-videos/--no-process-videos', is_flag=True, default=True,
     help='Search for and associate video files with the flight (if any)', show_default=True
+)
+@click.option('--process-images/--no-process-images', is_flag=True, default=True,
+    help='Search for and associate image files with the flight (if any)', show_default=True
 )
 @click.option('--yes', '-y', is_flag=True, default=False,
     help='Automatically confirm overwriting existing files', show_default=True
@@ -206,6 +209,7 @@ def export_json(
     ctx: ClickContext,
     input_file: Path,
     process_videos: bool,
+    process_images: bool,
     yes: bool,
 ):
     """Parse flight log and export as raw JSON data"""
@@ -216,6 +220,8 @@ def export_json(
     flight = parse_file(input_file)
     if process_videos:
         flight.search_videos(ctx.config)
+    if process_images:
+        flight.search_images(ctx.config)
     data = flight.serialize()
     if output_file.exists():
         try:
@@ -236,8 +242,11 @@ def export_json(
 @click.argument('input_dir', type=click.Path(
     exists=True, file_okay=False, path_type=Path,
 ))
-@click.option('--process-videos', is_flag=True, default=True,
+@click.option('--process-videos/--no-process-videos', is_flag=True, default=True,
     help='Search for and associate video files with the flight (if any)', show_default=True
+)
+@click.option('--process-images/--no-process-images', is_flag=True, default=True,
+    help='Search for and associate image files with the flight (if any)', show_default=True
 )
 @click.option('--yes', '-y', is_flag=True, default=False,
     help='Automatically confirm overwriting existing files', show_default=True
@@ -247,6 +256,7 @@ def batch_export_json(
     ctx: ClickContext,
     input_dir: Path,
     process_videos: bool,
+    process_images: bool,
     yes: bool,
 ):
     """Parse all flight logs in a directory and export as raw JSON data"""
@@ -265,6 +275,8 @@ def batch_export_json(
         flight = parse_file(p)
         if process_videos:
             flight.search_videos(ctx.config)
+        if process_images:
+            flight.search_images(ctx.config)
         # data = flight.serialize()
         # output_file = output_dir / (p.name + '.json')
         output_file = Flight.get_data_filename(p.name, ctx.config)

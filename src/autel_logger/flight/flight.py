@@ -14,7 +14,7 @@ from ..parser.model import (
     FlightControlsCalibration, RadarInfo, Warnings, RCInfo, BatteryInfo,
 )
 from ..config import Config
-from .media import VideoCacheData
+from .media import VideoCacheData, ImageCacheData
 
 
 
@@ -221,6 +221,27 @@ class Flight(NamedTuple):
             item.local_filename = best.item.filename
             item.fps = best.item.fps
             item.duration = best.item.duration
+            changed = True
+        return changed
+
+    def search_images(self, config: Config) -> bool:
+        """Search for image files associated with this flight"""
+        cache_data = ImageCacheData.load_from_cache(config)
+        changed = False
+        for item in self.image_items:
+            logger.debug(f"Searching for image files for item {item.filename}...")
+            if item.local_filename is not None:
+                continue
+            results = cache_data.search_from_flight_item(item, config)
+            if not results:
+                continue
+            best = results[0]
+            if best.confidence < 0.5:
+                continue
+            if best.item.filename == item.local_filename:
+                continue
+            logger.info(f"Matched image file {item.filename} to {best.item.filename} with confidence {best.confidence:.2f}")
+            item.local_filename = best.item.filename
             changed = True
         return changed
 
@@ -625,10 +646,13 @@ class VideoItem:
         )
 
 
-class ImageItem(NamedTuple):
+@dataclass
+class ImageItem:
     """Represents an image item in the flight data."""
     filename: str
     """The image filename."""
+    local_filename: Path|None
+    """The local path to the image file, if found."""
     time: datetime.datetime
     """The time when the image was taken."""
     time_offset: float
@@ -639,6 +663,7 @@ class ImageItem(NamedTuple):
     class SerializeTD(TypedDict):
         """:meta private:"""
         filename: str
+        local_filename: str|None
         time: str
         time_offset: float
         location: LatLon.SerializeTD
@@ -650,6 +675,7 @@ class ImageItem(NamedTuple):
         time_offset = (parsed.timestamp - flight_start_time).total_seconds()
         return cls(
             filename=parsed.filename,
+            local_filename=None,
             time=parsed.timestamp,
             time_offset=time_offset,
             location=parsed.location,
@@ -658,6 +684,7 @@ class ImageItem(NamedTuple):
     def serialize(self) -> SerializeTD:
         return {
             'filename': self.filename,
+            'local_filename': None if self.local_filename is None else str(self.local_filename),
             'time': self.time.isoformat(),
             'time_offset': self.time_offset,
             'location': self.location.serialize(),
@@ -667,6 +694,7 @@ class ImageItem(NamedTuple):
     def deserialize(cls, data: SerializeTD) -> Self:
         return cls(
             filename=data['filename'],
+            local_filename=None if data['local_filename'] is None else Path(data['local_filename']),
             time=datetime.datetime.fromisoformat(data['time']),
             time_offset=data['time_offset'],
             location=LatLon.deserialize(data['location']),

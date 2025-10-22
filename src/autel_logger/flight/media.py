@@ -842,3 +842,83 @@ class VideoCacheData(MediaCacheData[
             config=config,
             ignore_cache=ignore_cache,
         )
+
+
+@dataclass
+class ImageCacheData(MediaCacheData[
+    Literal['image'],
+    ImageFileInfo,
+    'ImageItem',
+]):
+    """Cache of image file metadata to speed up searches."""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        image_files: list[ImageFileInfo.SerializeTD]
+
+    @classmethod
+    def get_cache_filename(cls) -> str:
+        return 'image_cache.json'
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            image_files=[media_file.serialize() for media_file in self.media_files],
+        )
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            media_files=[ImageFileInfo.deserialize(entry) for entry in data['image_files']],
+        )
+
+    @classmethod
+    def _iter_search_paths(cls, config: Config) -> Iterator[MediaSearchPath[Literal['image']]]:
+        yield from config.image_search_paths
+
+    def parse_file(self, path: Path) -> ImageFileInfo:
+        return ImageFileInfo.from_image_file(path)
+
+    def _check_mime_type(self, mime_type: str) -> bool:
+        return mime_type.startswith('image/')
+
+    def _calc_confidence(
+        self,
+        media_info: ImageFileInfo,
+        start_time: datetime.datetime,
+        duration: datetime.timedelta,
+        location: LatLonAlt|LatLon|None = None
+    ) -> float|None:
+        time_weight = 0.5
+        distance_weight = 0.5
+        time_delta = abs((media_info.timestamp - start_time).total_seconds())
+        max_time_delta = 5.0  # seconds
+        if time_delta > max_time_delta:
+            return None
+        time_confidence =  1.0 - (time_delta / max_time_delta)
+        distance_confidence = 1.0
+        assert location is not None
+        if isinstance(location, LatLonAlt):
+            location = location.to_latlon()
+        img_location = media_info.gps_coords.to_latlon()
+        delta = location.distance_to(img_location)
+        max_distance = 10.0  # meters
+        if delta > max_distance:
+            return None
+        distance_confidence = 1.0 - (delta / max_distance)
+        overall_confidence = (time_confidence * time_weight) + (distance_confidence * distance_weight)
+        return overall_confidence
+
+    def search_from_flight_item(
+        self,
+        item: 'ImageItem',
+        config: Config,
+        ignore_cache: bool = False,
+    ) -> list[SearchResult[ImageFileInfo]]:
+        """Search for image files matching the given :class:`~.flight.ImageItem`."""
+        return self.search(
+            start_time=item.time,
+            duration=datetime.timedelta(seconds=0),
+            config=config,
+            location=item.location,
+            ignore_cache=ignore_cache,
+        )
