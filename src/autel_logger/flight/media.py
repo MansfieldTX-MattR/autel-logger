@@ -12,6 +12,7 @@ import fnmatch
 import tempfile
 
 from loguru import logger
+import exifread
 
 from ..spatial import LatLon, LatLonAlt, Orientation
 from ..config import MediaSearchPath, Config
@@ -433,6 +434,168 @@ class VideoFileInfo:
         if not self.subtitle_entries:
             return None
         return self.subtitle_entries[0].datetime
+
+
+
+class CameraInfo(NamedTuple):
+    """Represents the camera info for an image or video."""
+    focal_length: float
+    """The focal length of the camera in millimeters."""
+    sensor_width: float
+    """The sensor width of the camera in millimeters."""
+    sensor_height: float
+    """The sensor height of the camera in millimeters."""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        focal_length: float
+        sensor_width: float
+        sensor_height: float
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            focal_length=data['focal_length'],
+            sensor_width=data['sensor_width'],
+            sensor_height=data['sensor_height'],
+        )
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            focal_length=self.focal_length,
+            sensor_width=self.sensor_width,
+            sensor_height=self.sensor_height,
+        )
+
+    @classmethod
+    def from_exif_tags(cls, tags: dict) -> Self:
+        """Create an instance by analyzing EXIF tags from an image."""
+        focal_length: float = tags['EXIF FocalLength']
+        image_width: int = tags['EXIF ExifImageWidth']
+        image_height: int = tags['EXIF ExifImageLength']
+        focal_plane_x_ppu: float = tags['EXIF FocalPlaneXResolution'] # pixels per unit
+        focal_plane_y_ppu: float = tags['EXIF FocalPlaneYResolution'] # pixels per unit
+        focal_plane_units: int = tags['EXIF FocalPlaneResolutionUnit'] # 2 = inches, 3 = cm
+        focal_plane_x_res = 1.0 / focal_plane_x_ppu
+        focal_plane_y_res = 1.0 / focal_plane_y_ppu
+        if focal_plane_units == 2:  # inches
+            focal_plane_x_res *= 25.4  # convert to mm
+            focal_plane_y_res *= 25.4  # convert to mm
+        elif focal_plane_units == 3:  # cm
+            focal_plane_x_res *= 10.0  # convert to mm
+            focal_plane_y_res *= 10.0  # convert to mm
+        sensor_width = focal_plane_x_res * image_width
+        sensor_height = focal_plane_y_res * image_height
+        return cls(
+            focal_length=focal_length,
+            sensor_width=sensor_width,
+            sensor_height=sensor_height,
+        )
+
+
+class ExifGPSTags(TypedDict):
+    GPSLatitudeRef: Literal['N', 'S']
+    GPSLongitudeRef: Literal['E', 'W']
+    GPSAltitudeRef: int  # 0 = above sea level, 1 = below
+    GPSLatitude: tuple[int, int, float]
+    GPSLongitude: tuple[int, int, float]
+    GPSAltitude: float
+
+def parse_gps_latlonalt(tags: ExifGPSTags) -> LatLonAlt:
+    """Parse EXIF GPS tags into a LatLonAlt object."""
+    def parse_latlon(coords: tuple[int, int, float], ref: str) -> float:
+        deg, m, sec = coords
+        value = deg + (m / 60.0) + (sec / 3600.0)
+        if ref in ('S', 'W'):
+            value = -value
+        return value
+
+    latitude = parse_latlon(tags['GPSLatitude'], tags['GPSLatitudeRef'])
+    longitude = parse_latlon(tags['GPSLongitude'], tags['GPSLongitudeRef'])
+    altitude = tags['GPSAltitude']
+    if tags['GPSAltitudeRef'] == 1:
+        altitude = -altitude
+    return LatLonAlt(latitude=latitude, longitude=longitude, altitude=altitude)
+
+
+@dataclass
+class ImageFileInfo:
+    """Metadata for an image file."""
+    filename: Path
+    """Local path to the image file."""
+    timestamp: datetime.datetime
+    """The timestamp of the image."""
+    gps_coords: LatLonAlt
+    """The GPS coordinates (latitude, longitude, altitude) of the image."""
+    camera_settings: CameraSettings
+    """The camera settings for the image."""
+    camera_info: CameraInfo
+    """The camera info (focal length, sensor size) for the image."""
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        filename: str
+        timestamp: str
+        gps_coords: LatLonAlt.SerializeTD
+        camera_settings: CameraSettings.SerializeTD
+        camera_info: CameraInfo.SerializeTD
+
+    @classmethod
+    def from_image_file(cls, path: Path) -> Self:
+        """Create an instance by analyzing the given image file."""
+        try:
+            with path.open('rb') as f:
+                tags = exifread.process_file(f, details=False, builtin_types=True)
+            date_tag = tags.get('EXIF DateTimeOriginal')
+            if date_tag is None:
+                raise MediaParseError(f"Missing EXIF DateTimeOriginal in image: {path}")
+            date_str = str(date_tag)
+            timestamp = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+            gps_tags: ExifGPSTags = {
+                'GPSLatitudeRef': tags['GPS GPSLatitudeRef'],
+                'GPSLongitudeRef': tags['GPS GPSLongitudeRef'],
+                'GPSAltitudeRef': tags['GPS GPSAltitudeRef'],
+                'GPSLatitude': tags['GPS GPSLatitude'],
+                'GPSLongitude': tags['GPS GPSLongitude'],
+                'GPSAltitude': tags['GPS GPSAltitude'],
+            }
+            gps_coords = parse_gps_latlonalt(gps_tags)
+            camera_settings = CameraSettings(
+                iso=tags['EXIF ISOSpeedRatings'],
+                shutter=tags['EXIF ShutterSpeedValue'],
+                ev=tags['EXIF ExposureBiasValue'],
+                f_num=tags['EXIF FNumber'],
+            )
+            camera_info = CameraInfo.from_exif_tags(tags)
+            return cls(
+                filename=path,
+                timestamp=timestamp,
+                gps_coords=gps_coords,
+                camera_settings=camera_settings,
+                camera_info=camera_info,
+            )
+        except Exception as e:
+            logger.exception(e)
+            raise MediaParseError(f"Error parsing image file {path}: {e}")
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            filename=Path(data['filename']),
+            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
+            gps_coords=LatLonAlt.deserialize(data['gps_coords']),
+            camera_settings=CameraSettings.deserialize(data['camera_settings']),
+            camera_info=CameraInfo.deserialize(data['camera_info']),
+        )
+
+    def serialize(self) -> SerializeTD:
+        return self.SerializeTD(
+            filename=str(self.filename),
+            timestamp=self.timestamp.isoformat(),
+            gps_coords=self.gps_coords.serialize(),
+            camera_settings=self.camera_settings.serialize(),
+            camera_info=self.camera_info.serialize(),
+        )
 
 
 class SearchResult[T](NamedTuple):
