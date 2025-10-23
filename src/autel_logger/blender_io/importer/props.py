@@ -555,6 +555,51 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         bpy.utils.unregister_class(cls)
 
 
+class CameraInfoProperties(bpy.types.PropertyGroup):
+    if TYPE_CHECKING:
+        focal_length: float
+        sensor_width: float
+        sensor_height: float
+        fov: float
+    else:
+        focal_length: bpy.props.FloatProperty(
+            name="Focal Length",
+            description="Focal length of the camera in mm",
+            default=CAMERA_FOCAL_LENGTH,
+        )
+        sensor_width: bpy.props.FloatProperty(
+            name="Sensor Width",
+            description="Width of the camera sensor in mm",
+            default=CAMERA_SENSOR_WIDTH,
+        )
+        sensor_height: bpy.props.FloatProperty(
+            name="Sensor Height",
+            description="Height of the camera sensor in mm",
+            default=CAMERA_SENSOR_HEIGHT,
+        )
+        fov: bpy.props.FloatProperty(
+            name="Field of View",
+            description="Horizontal field of view of the camera in degrees",
+            default=CAMERA_FOV,
+        )
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
+
+    def import_from_data(self, data: BlCameraInfoData) -> None:
+        self.focal_length = data['focal_length']
+        self.sensor_width = data["sensor_width"]
+        self.sensor_height = data['sensor_height']
+        self.fov = 2 * math.degrees(
+            math.atan((self.sensor_width / 2) / self.focal_length)
+        )
+
+
 class FlightProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:
         name: str
@@ -575,6 +620,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         camera_object: bpy.types.Object
         left_stick: bpy.types.Object
         right_stick: bpy.types.Object
+        camera_info: CameraInfoProperties
     else:
         name: bpy.props.StringProperty(
             name="Flight Name",
@@ -676,6 +722,11 @@ class FlightProperties(bpy.types.PropertyGroup):
             description="Blender object representing the right flight stick",
             type=bpy.types.Object,
         )
+        camera_info: bpy.props.PointerProperty(
+            name="Camera Info",
+            description="Camera information for the flight",
+            type=CameraInfoProperties,
+        )
 
     @classmethod
     def _register_cls(cls) -> None:
@@ -754,6 +805,8 @@ class FlightProperties(bpy.types.PropertyGroup):
         flight.max_altitude = data['max_altitude']
         flight.start_latitude = data['start_location']['latitude']
         flight.start_longitude = data['start_location']['longitude']
+        if data['camera_info'] is not None:
+            flight.camera_info.import_from_data(data['camera_info'])
         for item_data in data['track_items']:
             flight.add_track_item(item_data, context)
         for item_data in data['video_items']:
@@ -918,6 +971,7 @@ def register_classes() -> None:
     FlightPathVertexProperties._register_cls()
     TrackItemProperties._register_cls()
     VideoItemProperties._register_cls()
+    CameraInfoProperties._register_cls()
     FlightProperties._register_cls()
     @persistent
     def on_load_post(*args) -> None:
@@ -940,3 +994,4 @@ def unregister_classes() -> None:
     TrackItemProperties._unregister_cls()
     FlightPathVertexProperties._unregister_cls()
     FlightStickProperties._unregister_cls()
+    CameraInfoProperties._unregister_cls()

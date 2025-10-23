@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 from .props import (
     FlightProperties, VideoItemProperties, FlightPathVertexProperties,
     FlightStickProperties,
-    CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
 )
 
 
@@ -380,7 +379,7 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         gimbal_empty = self._create_object('EMPTY', 'Gimbal_Empty')
         gimbal_empty.empty_display_type = 'ARROWS'
         gimbal_empty.parent = parent_object
-        camera = self._setup_camera(gimbal_empty, context)
+        camera = self._setup_camera(flight_props, gimbal_empty, context)
         flight_props.parent_object = parent_object
         flight_props.drone_object = drone_empty
         flight_props.gimbal_object = gimbal_empty
@@ -389,11 +388,17 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         bpy.ops.scene.autel_flight_log_update_animation() # type: ignore[attr-defined]
         return {'FINISHED'}
 
-    def _setup_camera(self, gimbal_empty: bpy.types.Object, context: bpy.types.Context) -> bpy.types.Object:
+    def _setup_camera(
+        self,
+        flight: FlightProperties,
+        gimbal_empty: bpy.types.Object,
+        context: bpy.types.Context
+    ) -> bpy.types.Object:
         camera = self._create_object('CAMERA', 'Drone_Camera')#, parent=gimbal_empty)
         assert isinstance(camera.data, bpy.types.Camera)
-        camera.data.lens = CAMERA_FOCAL_LENGTH
-        camera.data.sensor_width = CAMERA_SENSOR_WIDTH
+        camera.data.lens = flight.camera_info.focal_length
+        camera.data.sensor_width = flight.camera_info.sensor_width
+        camera.data.sensor_height = flight.camera_info.sensor_height
         camera.data.sensor_fit = 'HORIZONTAL'
         camera.rotation_euler = (math.radians(90), 0, 0)
         bpy.ops.object.constraint_add(type='COPY_LOCATION')

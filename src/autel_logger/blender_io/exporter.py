@@ -118,6 +118,13 @@ def build_media_items_data(flight: Flight) -> tuple[list[BlVideoItemData], list[
 
 def build_export_data(flight: Flight) -> BlExportData:
     video_items, image_items = build_media_items_data(flight)
+    camera_info: BlCameraInfoData|None = None
+    if flight.camera_info is not None:
+        camera_info = BlCameraInfoData(
+            focal_length=flight.camera_info.focal_length,
+            sensor_width=flight.camera_info.sensor_width,
+            sensor_height=flight.camera_info.sensor_height,
+        )
     return BlExportData(
         filename=flight.filename,
         distance=flight.distance,
@@ -130,6 +137,7 @@ def build_export_data(flight: Flight) -> BlExportData:
         start_timestamp=flight.start_time.timestamp(),
         start_time=flight.start_time.isoformat(),
         duration=flight.duration.total_seconds(),
+        camera_info=camera_info,
     )
 
 

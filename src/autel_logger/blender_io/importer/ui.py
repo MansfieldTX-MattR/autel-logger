@@ -60,6 +60,13 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             box.prop(selected_flight, "distance")
             box.prop(selected_flight, "max_altitude")
 
+            box = layout.box()
+            box.label(text="Camera Info:")
+            box.prop(selected_flight.camera_info, "focal_length")
+            box.prop(selected_flight.camera_info, "sensor_width")
+            box.prop(selected_flight.camera_info, "sensor_height")
+            box.prop(selected_flight.camera_info, "fov")
+
 
 class OBJECT_PT_flight_log_video_panel(bpy.types.Panel):
     """Panel to display flight log video information"""

@@ -17,6 +17,7 @@ __all__ = [
     'BlTrackItemData',
     'BlVideoItemData',
     'BlImageItemData',
+    'BlCameraInfoData',
     'BlLatLon',
     'BlLatLonAlt',
     'BlExportData',
@@ -102,6 +103,11 @@ class BlImageItemData(TypedDict):
     location: BlLatLon
 
 
+class BlCameraInfoData(TypedDict):
+    focal_length: float
+    sensor_width: float
+    sensor_height: float
+
 
 class BlExportData(TypedDict):
     filename: str
@@ -115,3 +121,4 @@ class BlExportData(TypedDict):
     distance: float
     max_altitude: float
     start_location: BlLatLon
+    camera_info: BlCameraInfoData|None
