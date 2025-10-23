@@ -35,17 +35,18 @@ def build_track_items_data(flight: Flight) -> list[BlTrackItemData]:
     items = []
     prev_drone_rot: Orientation[Literal['radians']] | None = None
     prev_gimbal_rot: Orientation[Literal['radians']] | None = None
+    orientation_offset = Orientation(0, 0, 180, 'degrees').to_radians()
     for item in flight.track_items:
         drone_rot = item.drone_orientation.to_radians()
         gimbal_rot = item.gimbal_orientation.to_radians()
 
         # Adjust drone rotation to match Blender's coordinate system
         drone_rot = drone_rot.inverted(pitch=True, roll=False, yaw=True).normalize()
-        drone_rot = drone_rot + Orientation(0, 0, 180, 'degrees').to_radians()
+        drone_rot = drone_rot + orientation_offset
 
         # Adjust gimbal rotation to match Blender's coordinate system
         gimbal_rot = gimbal_rot.inverted(pitch=True, roll=False, yaw=True).normalize()
-        gimbal_rot = gimbal_rot + Orientation(0, 0, 180, 'degrees').to_radians()
+        gimbal_rot = gimbal_rot + orientation_offset
 
         gimbal_relative_rot = gimbal_rot - drone_rot
         gimbal_relative_rot = gimbal_relative_rot.normalize()
