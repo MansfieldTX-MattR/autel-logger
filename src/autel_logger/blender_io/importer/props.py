@@ -980,12 +980,10 @@ def register_classes() -> None:
     bpy.app.handlers.load_post.append(on_load_post)
 
     @persistent
-    def on_frame_change_pre(scene: bpy.types.Scene) -> None:
+    def on_frame_change_post(scene: bpy.types.Scene) -> None:
         for flight in scene.autel_flight_logs: # type: ignore[attr-defined]
             flight.on_scene_frame_change(scene)
-    bpy.app.handlers.frame_change_pre.append(on_frame_change_pre)
-
-
+    bpy.app.handlers.frame_change_post.append(on_frame_change_post)
 
 
 def unregister_classes() -> None:
