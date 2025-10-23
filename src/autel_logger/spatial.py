@@ -148,6 +148,18 @@ class LatLon(NamedTuple):
         #     lon_distance = -lon_distance
         # return PositionMeters(lon_distance, lat_distance, 0.0)
 
+    def __add__(self, other: Self) -> Self:
+        return self.__class__(
+            latitude=self.latitude + other.latitude,
+            longitude=self.longitude + other.longitude,
+        )
+
+    def __sub__(self, other: Self) -> Self:
+        return self.__class__(
+            latitude=self.latitude - other.latitude,
+            longitude=self.longitude - other.longitude,
+        )
+
     def serialize(self) -> SerializeTD:
         return self.SerializeTD(
             latitude=self.latitude,
@@ -366,6 +378,24 @@ class LatLonAlt(NamedTuple):
             return PositionMeters(horizontal.x, horizontal.y, 0.0)
         vertical = self.altitude - reference.altitude
         return PositionMeters(horizontal.x, horizontal.y, vertical)
+
+    def __add__(self, other: Self|LatLon) -> Self:
+        lat, lon = other.latitude, other.longitude
+        alt = other.altitude if isinstance(other, LatLonAlt) else 0.0
+        return self.__class__(
+            latitude=self.latitude + lat,
+            longitude=self.longitude + lon,
+            altitude=self.altitude + alt,
+        )
+
+    def __sub__(self, other: Self|LatLon) -> Self:
+        lat, lon = other.latitude, other.longitude
+        alt = other.altitude if isinstance(other, LatLonAlt) else 0.0
+        return self.__class__(
+            latitude=self.latitude - lat,
+            longitude=self.longitude - lon,
+            altitude=self.altitude - alt,
+        )
 
 
 class Vector3D(NamedTuple):
