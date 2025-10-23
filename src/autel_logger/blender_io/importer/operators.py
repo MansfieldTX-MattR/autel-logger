@@ -360,6 +360,12 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         data: BlExportData = json.loads(s)
         flight_props = FlightProperties.import_from_data(context, data)
         scene = self._get_scene(context)
+        collection = bpy.data.collections.new(f'Flight_{flight_props.name}_Collection')
+        scene.collection.children.link(collection)
+        assert context.view_layer is not None
+        layer_collection = context.view_layer.layer_collection.children[collection.name]
+        context.view_layer.active_layer_collection = layer_collection
+        flight_props.collection = collection
         scene.frame_start = 1
         scene.frame_end = int(data['duration'] * self._get_fps(context)) + 1
         parent_object = self._create_object('EMPTY', f'Flight_{flight_props.name}_Parent')

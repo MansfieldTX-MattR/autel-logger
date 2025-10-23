@@ -558,6 +558,7 @@ class VideoItemProperties(bpy.types.PropertyGroup):
 class FlightProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:
         name: str
+        collection: bpy.types.Collection
         start_timestamp: float
         start_time: str
         duration: float
@@ -579,6 +580,11 @@ class FlightProperties(bpy.types.PropertyGroup):
             name="Flight Name",
             description="Name of the flight",
             default="",
+        )
+        collection: bpy.props.PointerProperty(
+            name="Flight Collection",
+            description="Blender collection containing all objects related to the flight",
+            type=bpy.types.Collection,
         )
         start_timestamp: bpy.props.FloatProperty(
             name="Start Timestamp",
