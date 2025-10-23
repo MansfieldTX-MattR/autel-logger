@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from .props import (
     FlightProperties, VideoItemProperties, FlightPathVertexProperties,
+    FlightStickProperties,
     CAMERA_FOCAL_LENGTH, CAMERA_SENSOR_WIDTH,
 )
 
@@ -32,11 +33,19 @@ def animate_objects(
     scene.frame_end = max((item.frame for item in flight_props.track_items), default=1)
     drone_obj = flight_props.drone_object
     gimbal_obj = flight_props.gimbal_object
+    left_stick_obj = flight_props.left_stick
+    right_stick_obj = flight_props.right_stick
     assert drone_obj is not None
     assert gimbal_obj is not None
+    assert left_stick_obj is not None
+    assert right_stick_obj is not None
     if not initial:
         clear_all_keyframes(flight_props.drone_object)
         clear_all_keyframes(flight_props.gimbal_object)
+        clear_all_keyframes(flight_props.left_stick)
+        clear_all_keyframes(flight_props.right_stick)
+    left_stick_props = FlightStickProperties.get_from_object(left_stick_obj)
+    right_stick_props = FlightStickProperties.get_from_object(right_stick_obj)
     try:
         for item in flight_props.track_items:
             frame = item.frame
@@ -49,12 +58,21 @@ def animate_objects(
                 gimbal_obj.location.z = item.relative_height
             drone_obj.rotation_euler = item.drone_orientation
             gimbal_obj.rotation_euler = item.gimbal_orientation
+            left_prop = left_stick_props[item.name]
+            right_prop = right_stick_props[item.name]
+            left_stick_obj.delta_location.x = left_prop.position[0]
+            left_stick_obj.delta_location.y = left_prop.position[1]
+            right_stick_obj.delta_location.x = right_prop.position[0]
+            right_stick_obj.delta_location.y = right_prop.position[1]
+
             if item.has_location:
                 drone_obj.keyframe_insert('location', frame=frame)
             drone_obj.keyframe_insert('rotation_euler', frame=frame)
             if item.has_location:
                 gimbal_obj.keyframe_insert('location', frame=frame)
             gimbal_obj.keyframe_insert('rotation_euler', frame=frame)
+            left_stick_obj.keyframe_insert('delta_location', index=-1, frame=frame)
+            right_stick_obj.keyframe_insert('delta_location', index=-1, frame=frame)
     finally:
         scene.frame_set(current_frame)
 
@@ -346,6 +364,10 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         scene.frame_end = int(data['duration'] * self._get_fps(context)) + 1
         parent_object = self._create_object('EMPTY', f'Flight_{flight_props.name}_Parent')
         flight_path = self.build_flight_path(data['flight_path'], context, parent_object)
+        left_stick, right_stick = self._build_flight_controls_objects(context, parent_object)
+        flight_props.left_stick = left_stick
+        flight_props.right_stick = right_stick
+        flight_props.add_flight_stick_data(context, data)
         drone_empty = self._create_object('EMPTY', 'Drone_Empty')
         drone_empty.empty_display_type = 'ARROWS'
         drone_empty.parent = parent_object
@@ -403,6 +425,48 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         assert obj.data is not None
         obj.data.name = data['name']
         return obj
+
+    def _build_flight_controls_objects(
+        self,
+        context: bpy.types.Context,
+        parent: bpy.types.Object|None
+    ) -> tuple[bpy.types.Object, bpy.types.Object]:
+        stick_parent = self._create_object('EMPTY', 'Flight Controls', parent=parent)
+        bpy.ops.mesh.primitive_circle_add(vertices=32, radius=1.0)
+        left_stick_circle = context.active_object
+        assert left_stick_circle is not None
+        left_stick_circle.name = 'Left_Stick_Circle'
+        left_stick_circle.parent = stick_parent
+        circle_mesh = left_stick_circle.data
+        assert circle_mesh is not None
+        assert isinstance(circle_mesh, bpy.types.Mesh)
+        right_stick_circle = left_stick_circle.copy()
+        right_stick_circle.name = 'Right_Stick_Circle'
+
+        left_stick = left_stick_circle.copy()
+        left_stick.name = 'Left_Stick'
+        left_stick.scale = (0.3, 0.3, 0.3)
+        left_stick.location.z += 0.3
+
+        right_stick = right_stick_circle.copy()
+        right_stick.name = 'Right_Stick'
+        right_stick.scale = (0.3, 0.3, 0.3)
+        right_stick.location.z += 0.3
+
+        assert context.collection is not None
+        context.collection.objects.link(right_stick_circle)
+        context.collection.objects.link(left_stick)
+        context.collection.objects.link(right_stick)
+
+        left_stick.parent = left_stick_circle
+        right_stick.parent = right_stick_circle
+
+        left_stick_circle.location.x = -2.0
+        right_stick_circle.location.x = 2.0
+        left_stick_circle.parent = stick_parent
+        right_stick_circle.parent = stick_parent
+
+        return left_stick, right_stick
 
     def _create_object(self, obj_type: BlObjectType, name: str, parent: bpy.types.Object|None = None) -> bpy.types.Object:
         if obj_type == 'MESH':

@@ -76,6 +76,17 @@ def build_track_items_data(flight: Flight) -> list[BlTrackItemData]:
             relative_location=None if rel_loc is None else (rel_loc.x, rel_loc.y),
             relative_height=item.altitude,
             distance=item.distance,
+            flight_controls=BlFlightControlsData(
+                left_stick=BlFlightStickData(
+                    x=item.flight_controls.left_stick.horizontal,
+                    y=item.flight_controls.left_stick.vertical,
+                ),
+                right_stick=BlFlightStickData(
+                    x=item.flight_controls.right_stick.horizontal,
+                    y=item.flight_controls.right_stick.vertical,
+                ),
+                is_calibrated=item.flight_controls_calibrated,
+            )
         ))
     return items
 

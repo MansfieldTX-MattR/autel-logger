@@ -126,6 +126,103 @@ class FlightPathVertexProperties(bpy.types.PropertyGroup):
         bpy.utils.unregister_class(cls)
 
 
+class FlightStickProperties(bpy.types.PropertyGroup):
+    if TYPE_CHECKING:
+        name: str
+        index: int
+        frame: int
+        scene_time: float
+        position: tuple[float, float]
+        stick_type: Literal['LEFT', 'RIGHT']
+    else:
+        name: bpy.props.StringProperty(
+            name="Name",
+            description="Name of the flight stick. This is str(self.frame)",
+            default="",
+        )
+        index: bpy.props.IntProperty(
+            name="Index",
+            description="Index of the flight stick",
+            default=0,
+        )
+        frame: bpy.props.IntProperty(
+            name="Frame",
+            description="Frame number in the Blender timeline",
+            default=0,
+        )
+        scene_time: bpy.props.FloatProperty(
+            name="Scene Time",
+            description="Time in the scene in seconds",
+            default=0.0,
+        )
+        position: bpy.props.FloatVectorProperty(
+            name="Stick Position",
+            description="Position of the flight stick (X, Y) from -1.0 to 1.0",
+            size=2,
+            default=(0.0, 0.0),
+            min=-1.0,
+            max=1.0,
+        )
+        stick_type: bpy.props.EnumProperty(
+            name="Stick Type",
+            description="Type of flight stick (left or right)",
+            items=[
+                ('LEFT', "Left Stick", "Left flight stick"),
+                ('RIGHT', "Right Stick", "Right flight stick"),
+            ]
+        )
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+        bpy.types.Object.autel_flight_stick_props = bpy.props.CollectionProperty(type=cls) # type: ignore[assign]
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        del bpy.types.Object.autel_flight_stick_props # type: ignore[assign]
+        bpy.utils.unregister_class(cls)
+
+    @classmethod
+    def get_from_object(cls, obj: bpy.types.Object) -> CollectionProp[Self]:
+        props = obj.autel_flight_stick_props # type: ignore[assignment]
+        return props
+
+    @classmethod
+    def from_track_item_data(
+        cls,
+        item_data: BlTrackItemData,
+        flight: FlightProperties,
+        context: bpy.types.Context,
+        stick_type: Literal['LEFT', 'RIGHT']
+    ) -> Self:
+        obj = flight.left_stick if stick_type == 'LEFT' else flight.right_stick
+        props = cls.get_from_object(obj)
+        self = props.add()
+        self.stick_type = stick_type
+        self.index = item_data['index']
+        self.scene_time = item_data['time']
+        if stick_type == 'LEFT':
+            stick_data = item_data['flight_controls']['left_stick']
+            pos = (stick_data['x'], stick_data['y'])
+        else:
+            stick_data = item_data['flight_controls']['right_stick']
+            # Right stick data is inverted
+            pos = (-stick_data['x'], -stick_data['y'])
+        self.position = pos
+        self.on_scene_fps_change(context)
+        return self
+
+    def on_scene_fps_change(self, context: bpy.types.Context|bpy.types.Scene) -> None:
+        """Update the frame number based on the scene fps"""
+        self.frame = timestamp_to_frame(self.scene_time, context, as_int=True)
+        self.name = str(self.frame)
+
+    def on_scene_frame_change(self, scene: bpy.types.Scene, obj: bpy.types.Object) -> None:
+        """Update any properties based on the scene frame change"""
+        pass
+
+
+
 class TrackItemProperties(bpy.types.PropertyGroup):
     if TYPE_CHECKING:
         name: str
@@ -475,6 +572,8 @@ class FlightProperties(bpy.types.PropertyGroup):
         gimbal_object: bpy.types.Object
         flight_path_object: bpy.types.Object
         camera_object: bpy.types.Object
+        left_stick: bpy.types.Object
+        right_stick: bpy.types.Object
     else:
         name: bpy.props.StringProperty(
             name="Flight Name",
@@ -559,6 +658,16 @@ class FlightProperties(bpy.types.PropertyGroup):
         camera_object: bpy.props.PointerProperty(
             name="Camera Object",
             description="Blender object representing the camera",
+            type=bpy.types.Object,
+        )
+        left_stick: bpy.props.PointerProperty(
+            name="Left Stick Object",
+            description="Blender object representing the left flight stick",
+            type=bpy.types.Object,
+        )
+        right_stick: bpy.props.PointerProperty(
+            name="Right Stick Object",
+            description="Blender object representing the right flight stick",
             type=bpy.types.Object,
         )
 
@@ -663,6 +772,16 @@ class FlightProperties(bpy.types.PropertyGroup):
         item.exists_locally = item_data['exists_locally']
         return item
 
+    def add_flight_stick_data(self, context: bpy.types.Context, data: BlExportData) -> None:
+        """Add :class:`FlightStickProperties` from the flight data"""
+        for item_data in data['track_items']:
+            FlightStickProperties.from_track_item_data(
+                item_data, self, context, 'LEFT'
+            )
+            FlightStickProperties.from_track_item_data(
+                item_data, self, context, 'RIGHT'
+            )
+
     @staticmethod
     def subscribe_all_flights_to_scene_fps(scene: bpy.types.Scene) -> None:
         for flight in scene.autel_flight_logs: # type: ignore[attr-defined]
@@ -691,12 +810,20 @@ class FlightProperties(bpy.types.PropertyGroup):
             item.on_scene_frame_change(scene, self)
         for item in self.video_items:
             item.on_scene_frame_change(scene, self)
+        for stick in (self.left_stick, self.right_stick):
+            props = FlightStickProperties.get_from_object(stick)
+            for flight_stick in props:
+                flight_stick.on_scene_frame_change(scene, stick)
 
     def update_item_times(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         for item in self.track_items:
             item.on_scene_fps_change(context)
         for item in self.video_items:
             item.on_scene_fps_change(context)
+        for stick in (self.left_stick, self.right_stick):
+            props = FlightStickProperties.get_from_object(stick)
+            for flight_stick in props:
+                flight_stick.on_scene_fps_change(context)
 
     def get_items_by_frame(
         self, compare: Callable[[int], bool]|None = None
@@ -781,6 +908,7 @@ class FlightProperties(bpy.types.PropertyGroup):
 
 
 def register_classes() -> None:
+    FlightStickProperties._register_cls()
     FlightPathVertexProperties._register_cls()
     TrackItemProperties._register_cls()
     VideoItemProperties._register_cls()
@@ -805,3 +933,4 @@ def unregister_classes() -> None:
     VideoItemProperties._unregister_cls()
     TrackItemProperties._unregister_cls()
     FlightPathVertexProperties._unregister_cls()
+    FlightStickProperties._unregister_cls()

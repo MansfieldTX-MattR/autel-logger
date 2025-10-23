@@ -12,6 +12,8 @@ __all__ = [
     'BlObjectLatLonAltData',
     'BlObjectWithVerticesData',
     'BlFlightPathData',
+    'BlFlightControlsData',
+    'BlFlightStickData',
     'BlTrackItemData',
     'BlVideoItemData',
     'BlImageItemData',
@@ -60,6 +62,16 @@ class BlFlightPathData(BlObjectWithVerticesData):
     vertex_times: list[float]
 
 
+class BlFlightStickData(TypedDict):
+    x: float
+    y: float
+
+class BlFlightControlsData(TypedDict):
+    left_stick: BlFlightStickData
+    right_stick: BlFlightStickData
+    is_calibrated: bool
+
+
 class BlTrackItemData(TypedDict):
     index: int
     time: float
@@ -72,6 +84,7 @@ class BlTrackItemData(TypedDict):
     relative_location: BlVector2D|None  # x, y in meters from start location
     relative_height: float  # z in meters from start location
     distance: float|None  # in meters from start location
+    flight_controls: BlFlightControlsData
 
 
 class BlVideoItemData(TypedDict):
