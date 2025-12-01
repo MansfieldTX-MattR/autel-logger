@@ -201,9 +201,9 @@ class Flight:
 
     @classmethod
     def get_data_filename(cls, log_filename: str, config: Config) -> Path:
-        data_dir = config.raw_log_dir
+        data_dir = config.flight_log_dir
         if data_dir is None:
-            raise ValueError('Config.raw_log_dir is not set')
+            raise ValueError('Config.flight_log_dir is not set')
         base_name = Path(log_filename).stem
         return data_dir / f'{base_name}.json'
 

@@ -61,11 +61,11 @@ def show_config(ctx: ClickContext):
 
 @config_group.command()
 @click.option(
-    '--raw-log-dir',
+    '--flight-log-dir',
     type=click.Path(
         exists=True, file_okay=False, path_type=Path,
     ),
-    help='Directory to store parsed raw log files (JSON format)',
+    help='Directory to store parsed flight log files (JSON format)',
 )
 @click.option(
     '--data-dir',
@@ -91,7 +91,7 @@ def show_config(ctx: ClickContext):
 @click.pass_obj
 def configure(
     ctx: ClickContext,
-    raw_log_dir: Path | None,
+    flight_log_dir: Path | None,
     data_dir: Path | None,
     cache_dir: Path | None,
     blender_export_dir: Path | None,
@@ -99,11 +99,11 @@ def configure(
     """Configure the application settings"""
     cfg = ctx.config
     changed = False
-    if raw_log_dir is not None:
-        raw_log_dir = raw_log_dir.expanduser().resolve()
-        if not raw_log_dir.is_dir():
-            raise click.ClickException(f'Raw log directory {raw_log_dir} is not a directory')
-        cfg.raw_log_dir = raw_log_dir
+    if flight_log_dir is not None:
+        flight_log_dir = flight_log_dir.expanduser().resolve()
+        if not flight_log_dir.is_dir():
+            raise click.ClickException(f'Flight log directory {flight_log_dir} is not a directory')
+        cfg.flight_log_dir = flight_log_dir
         changed = True
     if data_dir is not None:
         data_dir = data_dir.expanduser().resolve()
@@ -174,7 +174,7 @@ def parse_group():
 def list_data_files(ctx: ClickContext):
     """List all parsed data files in the data directory"""
     cfg = ctx.config
-    data_dir = cfg.raw_log_dir
+    data_dir = cfg.flight_log_dir
     if data_dir is None:
         click.echo('Data directory is not set in config')
         return
@@ -381,9 +381,9 @@ def batch_export_blender_json(
     yes: bool,
 ):
     """Parse all flight logs in the raw logs directory and export as Blender JSON data"""
-    input_dir = ctx.config.raw_log_dir
+    input_dir = ctx.config.flight_log_dir
     if input_dir is None:
-        raise click.ClickException('Raw log directory is not set in config')
+        raise click.ClickException('Flight log directory is not set in config')
     output_dir = ctx.config.blender_export_dir
     if output_dir is None:
         raise click.ClickException('Blender export directory is not set in config')

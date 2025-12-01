@@ -62,7 +62,7 @@ class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
 @dataclass
 class Config:
     """Configuration storage"""
-    raw_log_dir: Path|None = None
+    flight_log_dir: Path|None = None
     """Directory to store parsed log files"""
     data_dir: Path = DATA_DIR
     cache_dir: Path = CACHE_DIR
@@ -83,7 +83,7 @@ class Config:
 
     class SerializeTD(TypedDict):
         """:meta private:"""
-        raw_log_dir: str|None
+        flight_log_dir: str|None
         data_dir: str
         cache_dir: str
         blender_export_dir: str|None
@@ -94,7 +94,7 @@ class Config:
     @classmethod
     def deserialize(cls, data: SerializeTD) -> Self:
         return cls(
-            raw_log_dir=None if data['raw_log_dir'] is None else Path(data['raw_log_dir']),
+            flight_log_dir=None if data['flight_log_dir'] is None else Path(data['flight_log_dir']),
             data_dir=Path(data['data_dir']),
             cache_dir=Path(data['cache_dir']),
             blender_export_dir=None if data['blender_export_dir'] is None else Path(data['blender_export_dir']),
@@ -110,7 +110,7 @@ class Config:
 
     def serialize(self) -> SerializeTD:
         return self.SerializeTD(
-            raw_log_dir=None if self.raw_log_dir is None else str(self.raw_log_dir),
+            flight_log_dir=None if self.flight_log_dir is None else str(self.flight_log_dir),
             data_dir=str(self.data_dir),
             cache_dir=str(self.cache_dir),
             blender_export_dir=None if self.blender_export_dir is None else str(self.blender_export_dir),
