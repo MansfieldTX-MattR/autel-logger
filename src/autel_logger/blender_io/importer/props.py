@@ -46,10 +46,7 @@ def timestamp_to_frame(
     """Convert a UNIX timestamp to a Blender frame number."""
     if isinstance(timestamp, datetime.datetime):
         timestamp = timestamp.timestamp()
-    if isinstance(context, bpy.types.Scene):
-        scene = context
-    elif context is not None:
-        scene = context.scene
+    scene = get_scene_or_none(context)
     if scene is not None:
         fps = scene.render.fps
         fps_base = scene.render.fps_base
@@ -68,10 +65,7 @@ def frame_to_timestamp(
     context: bpy.types.Context|bpy.types.Scene|None = None
 ) -> float:
     """Convert a Blender frame number to a UNIX timestamp."""
-    if isinstance(context, bpy.types.Scene):
-        scene = context
-    elif context is not None:
-        scene = context.scene
+    scene = get_scene_or_none(context)
     if scene is not None:
         fps = scene.render.fps
         fps_base = scene.render.fps_base
@@ -82,6 +76,27 @@ def frame_to_timestamp(
     if isinstance(delta, datetime.timedelta):
         return delta.total_seconds()
     return delta
+
+
+def get_scene_or_none(context: bpy.types.Context|bpy.types.Scene|None) -> bpy.types.Scene|None:
+    """Get the scene from the given context or scene object.
+    """
+    if isinstance(context, bpy.types.Scene):
+        return context
+    elif isinstance(context, bpy.types.Context):
+        return context.scene
+    return None
+
+def get_scene(context: bpy.types.Context|bpy.types.Scene) -> bpy.types.Scene:
+    """Get the scene from the given context or scene object.
+
+    Raises:
+        ValueError: If the scene cannot be determined.
+    """
+    scene = get_scene_or_none(context)
+    if scene is None:
+        raise ValueError("Could not determine the scene from the given context.")
+    return scene
 
 
 class FlightPathVertexProperties(bpy.types.PropertyGroup):
@@ -516,7 +531,7 @@ class VideoItemProperties(bpy.types.PropertyGroup):
 
     def on_scene_frame_change(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
         """Update current_frame when scene frame changes"""
-        scene = context.scene if isinstance(context, bpy.types.Context) else context
+        scene = get_scene_or_none(context)
         if scene is None:
             return
         bg = self.get_camera_background(parent)
@@ -903,27 +918,30 @@ class FlightProperties(bpy.types.PropertyGroup):
             if compare(round(float(key)))
         }
 
-    def get_current_track_item(self, context: bpy.types.Context) -> TrackItemProperties | None:
-        if context.scene is None:
+    def get_current_track_item(self, context: bpy.types.Context|bpy.types.Scene) -> TrackItemProperties | None:
+        scene = get_scene_or_none(context)
+        if scene is None:
             return None
-        current_frame = context.scene.frame_current
+        current_frame = scene.frame_current
         items_by_frame = self.get_items_by_frame()
         return items_by_frame.get(current_frame, None)
 
-    def get_next_track_item(self, context: bpy.types.Context) -> TrackItemProperties | None:
-        if context.scene is None:
+    def get_next_track_item(self, context: bpy.types.Context|bpy.types.Scene) -> TrackItemProperties | None:
+        scene = get_scene_or_none(context)
+        if scene is None:
             return None
-        current_frame = context.scene.frame_current
+        current_frame = scene.frame_current
         items_by_frame = self.get_items_by_frame(lambda f: f > current_frame)
         if not items_by_frame:
             return None
         next_frame = min(items_by_frame.keys())
         return items_by_frame.get(next_frame, None)
 
-    def get_previous_track_item(self, context: bpy.types.Context) -> TrackItemProperties | None:
-        if context.scene is None:
+    def get_previous_track_item(self, context: bpy.types.Context|bpy.types.Scene) -> TrackItemProperties | None:
+        scene = get_scene_or_none(context)
+        if scene is None:
             return None
-        current_frame = context.scene.frame_current
+        current_frame = scene.frame_current
         items_by_frame = self.get_items_by_frame(lambda f: f < current_frame)
         if not items_by_frame:
             return None
