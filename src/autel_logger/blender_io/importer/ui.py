@@ -108,6 +108,7 @@ class OBJECT_PT_flight_log_video_panel(bpy.types.Panel):
             )
         else:
             clip_box.prop(video_item, "image_object")
+        clip_box.prop(selected_flight, "bg_viewport_opacity")
         clip_box.operator(
             SCENE_OT_autel_flight_log_import_video.bl_idname,
             text="Import Clip" if video_item.use_clip else "Import Video"

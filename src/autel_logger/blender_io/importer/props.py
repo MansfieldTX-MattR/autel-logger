@@ -444,6 +444,7 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         frame_rate: float|None
         exists_locally: bool
         image_object: bpy.types.Image|None
+        viewport_opacity: float
         use_clip: bool
         clip_object: bpy.types.MovieClip|None
         clip_use_proxy: bool
@@ -527,6 +528,13 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             description="Blender object representing the video image",
             type=bpy.types.Image,
         )
+        viewport_opacity: bpy.props.FloatProperty(
+            name="Viewport Opacity",
+            description="Opacity of the video in the viewport",
+            default=0.5,
+            min=0.0,
+            max=1.0,
+        )
         use_clip: bpy.props.BoolProperty(
             name="Use Clip",
             description="Whether to use a video clip instead of an image sequence",
@@ -578,17 +586,26 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         self.end_frame = int(round(self.get_end_frame(context)))
         self.name = str(self.start_frame)
 
-    def on_scene_frame_change(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
-        """Update current_frame when scene frame changes"""
+    def get_is_current(self, context: bpy.types.Context|bpy.types.Scene) -> bool:
+        """Return whether the video is current based on the scene frame."""
         scene = get_scene_or_none(context)
         if scene is None:
-            return
+            return False
+        return self.start_frame <= scene.frame_current <= self.end_frame
+
+    def set_viewport_opacity(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
+        """Update the viewport opacity of the camera background"""
+        self.viewport_opacity = parent.bg_viewport_opacity
+        self.on_scene_frame_change(context, parent)
+
+    def on_scene_frame_change(self, context: bpy.types.Context|bpy.types.Scene, parent: FlightProperties) -> None:
+        """Update current_frame when scene frame changes"""
         bg = self.get_camera_background(parent)
         if bg is None:
             return
-        is_current = self.start_frame <= scene.frame_current <= self.end_frame
+        is_current = self.get_is_current(context)
         if is_current:
-            bg.alpha = 0.5
+            bg.alpha = self.viewport_opacity
         else:
             bg.alpha = 0.0
 
@@ -677,6 +694,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         start_longitude: float
         track_items: CollectionProp[TrackItemProperties]
         video_items: CollectionProp[VideoItemProperties]
+        bg_viewport_opacity: float
         parent_object: bpy.types.Object
         drone_object: bpy.types.Object
         gimbal_object: bpy.types.Object
@@ -750,6 +768,17 @@ class FlightProperties(bpy.types.PropertyGroup):
             type=VideoItemProperties,
             name="Video Items",
             description="Collection of video items in the flight",
+        )
+        def _bg_viewport_opacity_update(self, context: bpy.types.Context):
+            for video_item in self.video_items:
+                video_item.set_viewport_opacity(context, self)
+        bg_viewport_opacity: bpy.props.FloatProperty(
+            name="Background Viewport Opacity",
+            description="Opacity of the camera background in the viewport",
+            default=0.5,
+            min=0.0,
+            max=1.0,
+            update=_bg_viewport_opacity_update,
         )
         parent_object: bpy.props.PointerProperty(
             name="Parent Object",
