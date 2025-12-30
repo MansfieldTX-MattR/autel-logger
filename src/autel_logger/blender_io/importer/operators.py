@@ -9,6 +9,7 @@ import bpy
 
 if TYPE_CHECKING:
     from ..types import *
+    from bpy.stub_internal.rna_enums import SpaceTypeItems
 
 from .props import (
     FlightProperties, VideoItemProperties, FlightPathVertexProperties,
