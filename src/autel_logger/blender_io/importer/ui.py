@@ -16,6 +16,7 @@ from .operators import (
     SCENE_OT_autel_flight_log_next_video_item,
     SCENE_OT_autel_flight_log_prev_video_item,
     SCENE_OT_autel_flight_log_import_video,
+    SCENE_OT_autel_flight_log_rebuild_proxy,
 )
 
 
@@ -95,8 +96,22 @@ class OBJECT_PT_flight_log_video_panel(bpy.types.Panel):
         box.separator()
         box.prop(video_item, "src_filename")
         box.prop(video_item, "filename")
-        box.prop(video_item, "image_object")
-        box.operator(SCENE_OT_autel_flight_log_import_video.bl_idname, text="Import Video")
+        clip_box = box.box()
+        clip_box.prop(video_item, "use_clip")
+        if video_item.use_clip:
+            clip_box.prop(video_item, "clip_object")
+            clip_box.prop(video_item, "clip_use_proxy")
+            clip_box.prop(video_item, "clip_proxy_size")
+            clip_box.operator(
+                SCENE_OT_autel_flight_log_rebuild_proxy.bl_idname,
+                text="Rebuild Proxy"
+            )
+        else:
+            clip_box.prop(video_item, "image_object")
+        clip_box.operator(
+            SCENE_OT_autel_flight_log_import_video.bl_idname,
+            text="Import Clip" if video_item.use_clip else "Import Video"
+        )
         box.separator()
         box.prop(video_item, "start_time")
         box.prop(video_item, "end_time")

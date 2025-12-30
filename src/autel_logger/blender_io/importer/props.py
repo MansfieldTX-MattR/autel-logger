@@ -3,6 +3,7 @@ from typing import TypeVar, Generic, Self, Literal, Callable, TYPE_CHECKING, ove
 import datetime
 from pathlib import Path
 import math
+import enum
 
 import bpy
 from bpy.app.handlers import persistent
@@ -24,6 +25,19 @@ CAMERA_SENSOR_HEIGHT = 8.8  # mm, Autel EVO II Pro
 CAMERA_ASPECT_RATIO = CAMERA_SENSOR_WIDTH / CAMERA_SENSOR_HEIGHT
 CAMERA_FOV = 2 * math.degrees(math.atan((CAMERA_SENSOR_WIDTH / 2) / CAMERA_FOCAL_LENGTH))  # degrees, horizontal FOV
 
+
+class ProxySize(enum.Enum):
+    """Enum representing different proxy sizes as percentages."""
+    PROXY_25 = 25
+    PROXY_50 = 50
+    PROXY_75 = 75
+    PROXY_100 = 100
+
+    @classmethod
+    def from_name(cls, name: ProxyName) -> ProxySize:
+        return cls[name]
+
+ProxyName = Literal['PROXY_25', 'PROXY_50', 'PROXY_75', 'PROXY_100']
 
 
 @overload
@@ -430,6 +444,10 @@ class VideoItemProperties(bpy.types.PropertyGroup):
         frame_rate: float|None
         exists_locally: bool
         image_object: bpy.types.Image|None
+        use_clip: bool
+        clip_object: bpy.types.MovieClip|None
+        clip_use_proxy: bool
+        clip_proxy_size: ProxyName
     else:
         name: bpy.props.StringProperty(
             name="Name",
@@ -509,19 +527,50 @@ class VideoItemProperties(bpy.types.PropertyGroup):
             description="Blender object representing the video image",
             type=bpy.types.Image,
         )
+        use_clip: bpy.props.BoolProperty(
+            name="Use Clip",
+            description="Whether to use a video clip instead of an image sequence",
+            default=True,
+        )
+        clip_object: bpy.props.PointerProperty(
+            name="Clip Object",
+            description="Blender object representing the video clip",
+            type=bpy.types.MovieClip,
+        )
+        clip_use_proxy: bpy.props.BoolProperty(
+            name="Use Proxy",
+            description="Whether to use a proxy for the video clip",
+            default=True,
+        )
+        clip_proxy_size: bpy.props.EnumProperty(
+            name="Proxy Size",
+            description="Size of the proxy for the video clip",
+            items=[
+                ('PROXY_25', "25%", "25%"),
+                ('PROXY_50', "50%", "50%"),
+                ('PROXY_75', "75%", "75%"),
+                ('PROXY_100', "100%", "100%"),
+            ],
+            default='PROXY_100',
+        )
 
     def get_camera_background(self, flight: FlightProperties) -> bpy.types.CameraBackgroundImage|None:
-        if self.image_object is None:
-            return None
-        if flight.camera_object is None:
-            return None
+        def bg_match(bg: bpy.types.CameraBackgroundImage) -> bool:
+            if self.use_clip:
+                return bg.clip == self.clip_object
+            else:
+                return bg.image == self.image_object
+
         camera = flight.camera_object.data
-        if not isinstance(camera, bpy.types.Camera):
+        assert isinstance(camera, bpy.types.Camera)
+        if self.use_clip:
+            if self.clip_object is None:
+                return None
+        elif self.image_object is None:
             return None
         for bg in camera.background_images:
-            if bg.image == self.image_object:
+            if bg_match(bg):
                 return bg
-        return None
 
     def on_scene_fps_change(self, context: bpy.types.Context|bpy.types.Scene) -> None:
         """Update start_frame and end_frame when scene fps changes"""

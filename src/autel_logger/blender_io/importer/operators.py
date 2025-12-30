@@ -3,6 +3,7 @@ from typing import Literal, TYPE_CHECKING
 import json
 from pathlib import Path
 import math
+import contextlib
 
 import bpy
 
@@ -11,8 +12,62 @@ if TYPE_CHECKING:
 
 from .props import (
     FlightProperties, VideoItemProperties, FlightPathVertexProperties,
-    FlightStickProperties,
+    FlightStickProperties, ProxyName, ProxySize,
 )
+
+
+
+def set_clip_proxy(
+    clip: bpy.types.MovieClip|bpy.types.MovieStrip|bpy.types.MovieClipUser,
+    proxy_size: ProxySize|ProxyName|int|None
+) -> None:
+    """Set the proxy size for a movie clip or movie strip."""
+    if proxy_size is None:
+        if isinstance(clip, bpy.types.MovieClipUser):
+            clip.proxy_render_size = 'FULL'
+            return
+        assert clip.proxy is not None
+        clip.proxy.build_25 = False
+        clip.proxy.build_50 = False
+        clip.proxy.build_75 = False
+        clip.proxy.build_100 = False
+        clip.use_proxy = False
+        return
+    if isinstance(proxy_size, str):
+        proxy_size = ProxySize.from_name(proxy_size)
+    elif not isinstance(proxy_size, ProxySize):
+        proxy_size = ProxySize(proxy_size)
+
+    if isinstance(clip, bpy.types.MovieClipUser):
+        clip.proxy_render_size = proxy_size.name
+        return
+    assert clip.proxy is not None
+    clip.proxy.build_25 = proxy_size == ProxySize.PROXY_25
+    clip.proxy.build_50 = proxy_size == ProxySize.PROXY_50
+    clip.proxy.build_75 = proxy_size == ProxySize.PROXY_75
+    clip.proxy.build_100 = proxy_size == ProxySize.PROXY_100
+    clip.proxy.timecode = 'RECORD_RUN'
+    if isinstance(clip, bpy.types.MovieStrip):
+        clip.proxy.use_overwrite = False
+    clip.use_proxy = True
+
+
+def find_open_sequencer_channel(
+    context: bpy.types.Context,
+    frame_start: int,
+    frame_end: int
+) -> int|None:
+    """Find an open sequencer channel in the given frame range."""
+    scene = context.scene
+    if scene is None or scene.sequence_editor is None:
+        return None
+    used_channels = set()
+    for seq in scene.sequence_editor.strips:
+        if seq.frame_final_start <= frame_end and seq.frame_final_end >= frame_start:
+            used_channels.add(seq.channel)
+    if not len(used_channels):
+        return 1
+    return max(used_channels) + 1
 
 
 
@@ -192,6 +247,146 @@ class SCENE_OT_autel_flight_log_prev_video_item(bpy.types.Operator):
     def _unregister_cls(cls) -> None:
         bpy.utils.unregister_class(cls)
 
+
+def find_area_of_type(context: bpy.types.Context, area_type: SpaceTypeItems) -> bpy.types.Area | None:
+    """Find an area of the given type in the current screen."""
+    if context.screen is None:
+        return None
+    for area in context.screen.areas:
+        if area.type == area_type:
+            return area
+    return None
+
+
+@contextlib.contextmanager
+def area_override(context: bpy.types.Context, area_type: SpaceTypeItems):
+    """Temporarily override the area type in the given context."""
+    if context.screen is None:
+        raise RuntimeError("No screen found in context")
+    area = find_area_of_type(context, area_type)
+    orig_area_type: SpaceTypeItems|None = None
+    try:
+        if area is None:
+            area = context.screen.areas[0]
+            orig_area_type = area.type
+            area.type = area_type
+        override_context = context.copy()
+        space = [space for space in area.spaces if space.type == area_type][0]
+        region = [region for region in area.regions if region.type == 'WINDOW'][0]
+        override_context['area'] = area
+        override_context['region'] = region
+        override_context['space_data'] = space
+        with context.temp_override(**override_context): # type: ignore[attr-defined]
+            yield override_context
+    finally:
+        if orig_area_type is not None and area is not None:
+            area.type = orig_area_type
+
+
+class SCENE_OT_autel_flight_log_rebuild_proxy(bpy.types.Operator):
+    """Rebuild proxy for the selected flight log"""
+    bl_idname = "scene.autel_flight_log_rebuild_proxy"
+    bl_label = "Rebuild Proxy"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        selected_flight = FlightProperties.get_selected_flight(context)
+        if selected_flight is None:
+            return False
+        current_video = selected_flight.get_current_video_item(context)
+        if current_video is None:
+            return False
+        if not current_video.use_clip:
+            return False
+        if current_video.clip_object is None:
+            return False
+        return True
+
+    def rebuild_video_proxy(
+        self,
+        context: bpy.types.Context,
+        current_video: VideoItemProperties,
+        remove_strip: bool = True
+    ) -> None:
+        """Rebuild video proxy using the sequence editor
+        """
+        self.report({'INFO'}, "Setting up sequencer strip")
+        assert context.scene is not None
+        sequencer = context.scene.sequence_editor
+        if sequencer is None:
+            sequencer = context.scene.sequence_editor_create()
+
+        video_path = Path(current_video.src_filename)
+        assert video_path.exists()
+
+        start_frame = current_video.get_start_frame(context)
+        end_frame = current_video.get_end_frame(context)
+        seq_channel = find_open_sequencer_channel(
+            context,
+            int(round(start_frame)),
+            int(round(end_frame))
+        )
+
+        # Work in a temporary sequence editor to add the strip and build proxy
+        with area_override(context, 'SEQUENCE_EDITOR') as override:
+            self.report({'INFO'}, "Adding movie strip to sequencer")
+            bpy.ops.sequencer.movie_strip_add(
+                filepath=str(video_path),
+                frame_start=int(round(start_frame)),
+                channel=seq_channel,
+                replace_sel=True,
+                adjust_playback_rate=False,
+                sound=False,
+                use_framerate=False,
+            )
+            seq = sequencer.active_strip
+            self.report({'INFO'}, f'Active strip: {seq}, {sequencer.active_strip=}')
+            assert seq is not None
+            assert isinstance(seq, bpy.types.MovieStrip)
+            assert seq.filepath == str(video_path)
+
+            set_clip_proxy(seq, current_video.clip_proxy_size)
+            self.report({'INFO'}, "Rebuilding sequencer proxy")
+            bpy.ops.sequencer.rebuild_proxy()
+            if remove_strip:
+                bpy.ops.sequencer.delete()
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        selected_flight = FlightProperties.get_selected_flight(context)
+        assert selected_flight is not None
+        current_video = selected_flight.get_current_video_item(context)
+        assert current_video is not None
+
+        if not current_video.use_clip:
+            self.report({'WARNING'}, "Video is not using a clip")
+            return {'CANCELLED'}
+        if current_video.clip_object is None:
+            self.report({'WARNING'}, "Video clip object is not set")
+            return {'CANCELLED'}
+        bg = current_video.get_camera_background(selected_flight)
+        if bg is None:
+            raise RuntimeError("Camera background is not set")
+        assert bg.clip_user is not None
+        proxy_size = current_video.clip_proxy_size
+        if not current_video.clip_use_proxy:
+            set_clip_proxy(bg.clip_user, None)
+            set_clip_proxy(current_video.clip_object, None)
+            return {'FINISHED'}
+        set_clip_proxy(bg.clip_user, proxy_size)
+        set_clip_proxy(current_video.clip_object, proxy_size)
+        self.rebuild_video_proxy(context, current_video)
+        return {'FINISHED'}
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
+
+
 class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
     """Import video files for the selected flight log"""
     bl_idname = "scene.autel_flight_log_import_video"
@@ -205,8 +400,12 @@ class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
             return False
         if not current_video.exists_locally:
             return False
-        if current_video.image_object is not None:
-            return False
+        if current_video.use_clip:
+            if current_video.clip_object is not None:
+                return False
+        else:
+            if current_video.image_object is not None:
+                return False
         return True
 
     @classmethod
@@ -223,8 +422,12 @@ class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
     def _can_import_video(cls, context: bpy.types.Context, current_video: VideoItemProperties) -> tuple[bool, str]:
         if not current_video.exists_locally:
             return False, "Video item does not exist locally"
-        if current_video.image_object is not None:
-            return False, "Video item already has an image object"
+        if current_video.use_clip:
+            if current_video.clip_object is not None:
+                return False, "Video item already has a clip object"
+        else:
+            if current_video.image_object is not None:
+                return False, "Video item already has an image object"
         assert context.scene is not None
         if current_video.frame_rate != context.scene.render.fps:
             return False, "Video item frame rate does not match scene frame rate"
@@ -238,19 +441,13 @@ class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
             return False, "Video item frame rate does not match scene frame rate"
         return True, ""
 
-    def execute(self, context: bpy.types.Context) -> set[str]:
-        current_video, err_msg = self._get_current_video(context)
-        if current_video is None:
-            self.report({'WARNING'}, err_msg)
-            return {'CANCELLED'}
-        can_import, err_msg = self._can_import_video(context, current_video)
-        if not can_import:
-            self.report({'WARNING'}, err_msg)
-            return {'CANCELLED'}
-        video_path = Path(current_video.src_filename)
-        assert video_path.exists()
-        selected_flight = FlightProperties.get_selected_flight(context)
-        assert selected_flight is not None
+    def import_as_image_sequence(
+        self,
+        context: bpy.types.Context,
+        current_video: VideoItemProperties,
+        selected_flight: FlightProperties,
+        video_path: Path
+    ) -> set[str]:
         try:
             image = bpy.data.images.load(filepath=str(video_path), check_existing=True)
         except Exception as e:
@@ -280,6 +477,65 @@ class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
         bg.image_user.frame_duration = int(round(num_frames))
         bg.image_user.frame_offset = 0
         return {'FINISHED'}
+
+    def import_as_clip(
+        self,
+        context: bpy.types.Context,
+        current_video: VideoItemProperties,
+        selected_flight: FlightProperties,
+        video_path: Path
+    ) -> set[str]:
+        assert context.scene is not None
+        try:
+            clip = bpy.data.movieclips.load(filepath=str(video_path), check_existing=True)
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to load video file: {e}")
+            return {'CANCELLED'}
+        current_video.clip_object = clip
+        self.report({'INFO'}, f"Imported video file as clip: {video_path.name}")
+
+        camera = selected_flight.camera_object
+        if camera is None:
+            self.report({'WARNING'}, "No camera object found in flight properties")
+            return {'CANCELLED'}
+        assert isinstance(camera.data, bpy.types.Camera)
+        camera.data.show_background_images = True
+        bg = camera.data.background_images.new()
+        bg.source = 'MOVIE_CLIP'
+        bg.clip = clip
+        bg.display_depth = 'FRONT'
+        bg.frame_method = 'CROP'
+        bg.alpha = 0.5
+        start_frame = current_video.get_start_frame(context)
+        end_frame = current_video.get_end_frame(context)
+        num_frames = end_frame - start_frame
+        if num_frames <= 0:
+            self.report({'WARNING'}, "Video item has invalid frame range")
+            return {'CANCELLED'}
+        clip.frame_start = int(round(start_frame))
+        clip.frame_offset = 0
+
+        # call class SCENE_OT_autel_flight_log_rebuild_proxy operator
+        bpy.ops.scene.autel_flight_log_rebuild_proxy() # type: ignore[attr-defined]
+        return {'FINISHED'}
+
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        current_video, err_msg = self._get_current_video(context)
+        if current_video is None:
+            self.report({'WARNING'}, err_msg)
+            return {'CANCELLED'}
+        can_import, err_msg = self._can_import_video(context, current_video)
+        if not can_import:
+            self.report({'WARNING'}, err_msg)
+            return {'CANCELLED'}
+        video_path = Path(current_video.src_filename)
+        assert video_path.exists()
+        selected_flight = FlightProperties.get_selected_flight(context)
+        assert selected_flight is not None
+        if current_video.use_clip:
+            return self.import_as_clip(context, current_video, selected_flight, video_path)
+        return self.import_as_image_sequence(context, current_video, selected_flight, video_path)
 
     @classmethod
     def _register_cls(cls) -> None:
@@ -519,6 +775,7 @@ def register_classes() -> None:
     SCENE_OT_autel_flight_log_prev_item._register_cls()
     SCENE_OT_autel_flight_log_next_video_item._register_cls()
     SCENE_OT_autel_flight_log_prev_video_item._register_cls()
+    SCENE_OT_autel_flight_log_rebuild_proxy._register_cls()
     SCENE_OT_autel_flight_log_import_video._register_cls()
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
@@ -532,3 +789,4 @@ def unregister_classes() -> None:
     SCENE_OT_autel_flight_log_next_video_item._unregister_cls()
     SCENE_OT_autel_flight_log_prev_video_item._unregister_cls()
     SCENE_OT_autel_flight_log_import_video._unregister_cls()
+    SCENE_OT_autel_flight_log_rebuild_proxy._unregister_cls()
