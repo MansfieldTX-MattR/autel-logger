@@ -23,6 +23,17 @@ CACHE_DIR = Path(DIRS.user_cache_dir)
 DATA_DIR = Path(DIRS.user_data_dir)
 
 
+class MediaSearchPathKey(NamedTuple):
+    """Key for a media search path, used for comparison and hashing"""
+    path: Path
+    """The directory to search"""
+    glob_pattern: str|None
+    """An optional glob pattern to filter files (e.g. 'MAX_*.MOV')"""
+    recursive: bool
+    """Whether to search recursively in subdirectories"""
+
+
+
 class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
     """A path to search for media files of a specific type"""
     path: Path
@@ -40,6 +51,14 @@ class MediaSearchPath[T: MediaRecordTypeName](NamedTuple):
         type: T
         glob_pattern: str|None
         recursive: bool
+
+    @property
+    def path_key(self) -> MediaSearchPathKey:
+        """A tuple key representing the path, glob pattern, and recursive flag
+
+        This is used for comparison and hashing of MediaSearchPath objects.
+        """
+        return MediaSearchPathKey(self.path, self.glob_pattern, self.recursive)
 
     @classmethod
     def deserialize(cls, data: SerializeTD) -> Self:

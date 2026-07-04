@@ -13,7 +13,7 @@ from .blender_io.exporter import (
     build_export_data as bl_build_export_data,
     bl_data_matches,
 )
-from .config import Config
+from .config import Config, MediaRecordTypeName, MediaSearchPathKey
 
 
 class ClickContext(NamedTuple):
@@ -161,6 +161,40 @@ def add_media_search_path(
     cfg.save()
     click.echo(f'Added {media_type} search path {search_path} to config file {cfg.DEFAULT_FILENAME}')
 
+@config_group.command(name='sync-search-paths')
+@click.option('--yes', '-y', is_flag=True, default=False,
+    help='Automatically confirm synchronization', show_default=True
+)
+@click.pass_obj
+def sync_search_paths(ctx: ClickContext, yes: bool):
+    """Synchronize media search paths in the config file
+
+    This command will merge the video and image search paths in the config file,
+    ensuring that both media types have the same set of search paths.
+    If a search path exists for one media type but not the other,
+    it will be added to the missing media type.
+    """
+    cfg = ctx.config
+    video_path_objs = {sp.path_key: sp for sp in cfg.video_search_paths}
+    image_path_objs = {sp.path_key: sp for sp in cfg.image_search_paths}
+    missing_keys: dict[MediaRecordTypeName, set[MediaSearchPathKey]] = {
+        'video': set(image_path_objs.keys()) - set(video_path_objs.keys()),
+        'image': set(video_path_objs.keys()) - set(image_path_objs.keys()),
+    }
+    if not missing_keys['video'] and not missing_keys['image']:
+        click.echo('Media search paths are already synchronized.')
+        return
+    for media_type, keys in missing_keys.items():
+        click.echo(f'Found {len(keys)} missing {media_type} search paths to add:')
+        for key in keys:
+            sp = (image_path_objs if media_type == 'video' else video_path_objs)[key]
+            if yes:
+                click.echo(f' Adding {media_type} search path: {sp.path} (glob: {sp.glob_pattern}, recursive: {sp.recursive})')
+            elif not click.confirm(f'Add {media_type} search path: {sp.path} (glob: {sp.glob_pattern}, recursive: {sp.recursive})?', default=True):
+                click.echo(f'Skipping {sp.path}')
+                continue
+            cfg.add_media_search_path(media_type, sp.path, sp.glob_pattern, sp.recursive)
+    click.echo(f'Synchronized media search paths in config file {cfg.DEFAULT_FILENAME}')
 
 
 @cli.group(name='parse')
