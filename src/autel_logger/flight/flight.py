@@ -15,8 +15,10 @@ from ..parser.model import (
     FlightControlsCalibration, RadarInfo, Warnings, RCInfo, BatteryInfo,
 )
 from ..config import Config
-from .media import VideoCacheData, ImageCacheData, CameraInfo
-
+from .media import (
+    VideoCacheData, ImageCacheData, CameraInfo, CameraSettings, SubtitleEntry,
+    VideoFileInfo,
+)
 
 
 class HomeLocationError(Exception):
@@ -320,13 +322,9 @@ class Flight:
             best = results[0]
             if best.confidence < 0.5:
                 continue
-            if best.item.filename == item.local_filename:
-                continue
-            logger.info(f"Matched video file {item.filename} to {best.item.filename} with confidence {best.confidence:.2f}")
-            item.local_filename = best.item.filename
-            item.fps = best.item.fps
-            item.duration = best.item.duration
-            changed = True
+            if item.update_from_video_info(self, best.item, self.home_location):
+                logger.debug(f"Updated video item {item.filename} from video info")
+                changed = True
         return changed
 
     def search_images(self, config: Config) -> bool:
@@ -662,6 +660,104 @@ class TrackItem(NamedTuple):
             warnings=Warnings.deserialize(data['warnings']),
         )
 
+
+
+class VideoItemEntry(NamedTuple):
+    """A single entry in a video item track
+    """
+    subtitle_entry: SubtitleEntry
+    """The subtitle entry associated with this video item entry"""
+    flight_timestamp: float
+    """The timestamp in seconds since the flight start time"""
+    relative_location: PositionMeters
+    """The drone's location relative to the flight :attr:`~Flight.home_location`
+    in meters
+    """
+    altitude_offset: float
+    """The altitude offset between the nearest AGL reading and this entry's MSL altitude
+    in meters
+    """
+
+    @property
+    def index(self) -> int:
+        """The index of the subtitle entry"""
+        return self.subtitle_entry.index
+
+    @property
+    def start_pts(self) -> float:
+        """The start PTS of the subtitle entry in seconds"""
+        return self.subtitle_entry.start_pts
+
+    @property
+    def end_pts(self) -> float:
+        """The end PTS of the subtitle entry in seconds"""
+        return self.subtitle_entry.end_pts
+
+    @property
+    def datetime(self) -> datetime.datetime:
+        """The datetime of the subtitle entry"""
+        return self.subtitle_entry.datetime
+
+    @property
+    def home_coords(self) -> LatLon:
+        """The home coordinates of the subtitle entry"""
+        return self.subtitle_entry.home_coords
+
+    @property
+    def gps_coords(self) -> LatLonAlt:
+        """The GPS coordinates of the subtitle entry"""
+        return self.subtitle_entry.gps_coords
+
+    @property
+    def camera_settings(self) -> CameraSettings:
+        """The camera settings of the subtitle entry"""
+        return self.subtitle_entry.camera_settings
+
+    @property
+    def drone_orientation(self) -> Orientation[Literal['degrees']]:
+        """The drone orientation of the subtitle entry"""
+        return self.subtitle_entry.f_pry
+
+    @property
+    def gimbal_orientation(self) -> Orientation[Literal['degrees']]:
+        """The gimbal orientation of the subtitle entry"""
+        return self.subtitle_entry.g_pry
+
+    @property
+    def relative_location_offset(self) -> PositionMeters:
+        """The relative location with altitude offset applied (referenced to home location)
+        """
+        return PositionMeters(
+            self.relative_location.x,
+            self.relative_location.y,
+            self.relative_location.z - self.altitude_offset,
+        )
+
+    class SerializeTD(TypedDict):
+        """:meta private:"""
+        subtitle_entry: SubtitleEntry.SerializeTD
+        flight_timestamp: float
+        relative_location: PositionMeters.SerializeTD
+        altitude_offset: float
+
+    def serialize(self) -> SerializeTD:
+        return {
+            'subtitle_entry': self.subtitle_entry.serialize(),
+            'flight_timestamp': self.flight_timestamp,
+            'relative_location': self.relative_location.serialize(),
+            'altitude_offset': self.altitude_offset,
+        }
+
+    @classmethod
+    def deserialize(cls, data: SerializeTD) -> Self:
+        return cls(
+            subtitle_entry=SubtitleEntry.deserialize(data['subtitle_entry']),
+            flight_timestamp=data['flight_timestamp'],
+            relative_location=PositionMeters.deserialize(data['relative_location']),
+            altitude_offset=data['altitude_offset'],
+        )
+
+
 @dataclass
 class VideoItem:
     """Represents a video item in the flight data."""
@@ -679,6 +775,8 @@ class VideoItem:
     """The duration of the video"""
     fps: Fraction|None
     """The frame rate of the video, if known"""
+    track_entries: list[VideoItemEntry]|None
+    """The track entries associated with the video, if known"""
 
     class SerializeTD(TypedDict):
         """:meta private:"""
@@ -689,6 +787,7 @@ class VideoItem:
         location: LatLon.SerializeTD
         duration: float
         fps: str|None
+        track_entries: list[VideoItemEntry.SerializeTD]|None
 
 
     @property
@@ -729,9 +828,88 @@ class VideoItem:
             location=parsed.location,
             duration=datetime.timedelta(seconds=parsed.duration),
             fps=None,
+            track_entries=None,
         )
 
+    @logger.catch(reraise=True)
+    def update_from_video_info(self, flight: Flight, video_info: VideoFileInfo, home_location: LatLonAlt) -> bool:
+        """Update the video item from a :class:`VideoFileInfo` instance.
+
+        Returns True if any changes were made.
+        """
+        changed = False
+        if self.local_filename != video_info.filename:
+            self.local_filename = video_info.filename
+            changed = True
+        if self.fps != video_info.fps:
+            self.fps = video_info.fps
+            changed = True
+        if self.duration != video_info.duration:
+            self.duration = video_info.duration
+            changed = True
+
+        def find_nearest_track_item(
+            flight: Flight, timestamp: datetime.datetime
+        ) -> TrackItem|None:
+            nearest: TrackItem|None = None
+            nearest_diff = datetime.timedelta.max
+            for item in flight.track_items:
+                diff = abs(item.time - timestamp)
+                if diff < nearest_diff:
+                    nearest = item
+                    nearest_diff = diff
+            return nearest
+
+        if self.track_entries is None:
+            if self.track_entries is not None and len(self.track_entries) != len(video_info.subtitle_entries):
+                existing_entries = None
+                changed = True
+            else:
+                existing_entries = self.track_entries or None
+
+            track_entries: list[VideoItemEntry] = []
+            entries_valid = True
+            entries_changed = False
+            for i, subtitle_entry in enumerate(video_info.subtitle_entries):
+                if existing_entries is not None:
+                    existing_entry = existing_entries[i]
+                    assert existing_entry.subtitle_entry.index == subtitle_entry.index, f"Subtitle entry index mismatch: {existing_entry.subtitle_entry.index} != {subtitle_entry.index}"
+                else:
+                    existing_entry = None
+
+                nearest_track_item = find_nearest_track_item(
+                    flight,
+                    subtitle_entry.datetime,
+                )
+                if nearest_track_item is None:
+                    entries_valid = False
+                    break
+                flight_timestamp = (subtitle_entry.datetime - flight.start_time).total_seconds()
+
+                relative_location = subtitle_entry.gps_coords.to_position_meters(home_location)
+                altitude_offset = (
+                    subtitle_entry.gps_coords.altitude - nearest_track_item.altitude
+                )
+                track_entry = VideoItemEntry(
+                    subtitle_entry=subtitle_entry,
+                    flight_timestamp=flight_timestamp,
+                    relative_location=relative_location,
+                    altitude_offset=altitude_offset,
+                )
+                track_entries.append(track_entry)
+                if existing_entry is not None and existing_entry == track_entry:
+                    continue
+                entries_changed = True
+            if entries_changed and entries_valid:
+                self.track_entries = track_entries
+                changed = True
+        return changed
+
     def serialize(self) -> SerializeTD:
+        if self.track_entries is None:
+            track_entries = None
+        else:
+            track_entries = [entry.serialize() for entry in self.track_entries]
         return {
             'filename': self.filename,
             'local_filename': None if self.local_filename is None else str(self.local_filename),
@@ -740,10 +918,18 @@ class VideoItem:
             'location': self.location.serialize(),
             'duration': self.duration.total_seconds(),
             'fps': self.fps_str,
+            'track_entries': track_entries,
         }
 
     @classmethod
     def deserialize(cls, data: SerializeTD) -> Self:
+        track_entry_data = data.get('track_entries')
+        if track_entry_data is None:
+            track_entries = None
+        else:
+            track_entries = [
+                VideoItemEntry.deserialize(entry) for entry in track_entry_data
+            ]
         return cls(
             filename=data['filename'],
             local_filename=None if data['local_filename'] is None else Path(data['local_filename']),
@@ -752,6 +938,7 @@ class VideoItem:
             location=LatLon.deserialize(data['location']),
             duration=datetime.timedelta(seconds=data['duration']),
             fps=None if data['fps'] is None else Fraction(data['fps']),
+            track_entries=track_entries,
         )
 
 
