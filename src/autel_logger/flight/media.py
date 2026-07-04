@@ -113,6 +113,8 @@ class SubtitleEntry(NamedTuple):
     """The end time of the subtitle entry in seconds."""
     datetime: datetime.datetime
     """The datetime when the subtitle entry was recorded."""
+    frame_number: int
+    """The frame number corresponding to the subtitle entry."""
     home_coords: LatLon
     """The home coordinates (latitude and longitude) of the drone."""
     gps_coords: LatLonAlt
@@ -136,6 +138,7 @@ class SubtitleEntry(NamedTuple):
         start_pts: float
         end_pts: float
         datetime: str
+        frame_number: int
         home_coords: LatLon.SerializeTD
         gps_coords: LatLonAlt.SerializeTD
         camera_settings: CameraSettings.SerializeTD
@@ -148,6 +151,7 @@ class SubtitleEntry(NamedTuple):
             start_pts=self.start_pts,
             end_pts=self.end_pts,
             datetime=self.datetime.isoformat(),
+            frame_number=self.frame_number,
             home_coords=self.home_coords.serialize(),
             gps_coords=self.gps_coords.serialize(),
             camera_settings=self.camera_settings.serialize(),
@@ -162,6 +166,7 @@ class SubtitleEntry(NamedTuple):
             start_pts=data['start_pts'],
             end_pts=data['end_pts'],
             datetime=datetime.datetime.fromisoformat(data['datetime']),
+            frame_number=data['frame_number'],
             home_coords=LatLon.deserialize(data['home_coords']),
             gps_coords=LatLonAlt.deserialize(data['gps_coords']),
             camera_settings=CameraSettings.deserialize(data['camera_settings']),
@@ -260,7 +265,7 @@ class SubtitleEntry(NamedTuple):
         return Orientation(pitch=pitch, roll=roll, yaw=yaw, unit='degrees')
 
     @classmethod
-    def from_srt_lines(cls, lines: list[str]) -> Self:
+    def from_srt_lines(cls, lines: list[str], fps: Fraction) -> Self:
         if len(lines) < 4:
             raise MediaParseError("Not enough lines for subtitle entry")
         index = int(lines[0].strip())
@@ -282,11 +287,13 @@ class SubtitleEntry(NamedTuple):
         g_pry = cls._parse_orientation(g_pry_part, 'G.PRY')
         # f_pry = cls._parse_orientation(lines[5].strip(), 'F.PRY')
         # g_pry = cls._parse_orientation(lines[5].strip(), 'G.PRY')
+        frame_number = int(start_pts * fps.numerator / fps.denominator)
         return cls(
             index=index,
             start_pts=start_pts,
             end_pts=end_pts,
             datetime=datetime_obj,
+            frame_number=frame_number,
             home_coords=home_coords,
             gps_coords=gps_coords,
             camera_settings=camera_settings,
@@ -297,7 +304,7 @@ class SubtitleEntry(NamedTuple):
 
 # ffmpeg -i MAX_0009.MOV -map 0:s:0 -vn -an  MAX_0008.srt
 @logger.catch(reraise=True)
-def get_video_subtitles(path: Path) -> list[SubtitleEntry]:
+def get_video_subtitles(path: Path, fps: Fraction) -> list[SubtitleEntry]:
     """Get a list of :class:`SubtitleEntry` from the video's subtitle stream.
 
     Subtitle stream includes entries formatted like:
@@ -352,7 +359,7 @@ def get_video_subtitles(path: Path) -> list[SubtitleEntry]:
         entries = []
         for entry_lines in split_entries(lines):
             try:
-                entry = SubtitleEntry.from_srt_lines(entry_lines)
+                entry = SubtitleEntry.from_srt_lines(entry_lines, fps)
                 entries.append(entry)
             except MediaParseError as e:
                 raise
@@ -411,7 +418,7 @@ class VideoFileInfo:
         duration, fps = get_video_duration_and_fps(path)
         if duration is None or fps is None:
             raise ValueError(f"Could not get duration or fps for video file: {path}")
-        subtitle_entries = get_video_subtitles(path)
+        subtitle_entries = get_video_subtitles(path, fps)
         return cls(
             filename=path,
             duration=duration,
