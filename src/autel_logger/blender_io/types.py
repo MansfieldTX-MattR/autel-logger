@@ -120,5 +120,6 @@ class BlExportData(TypedDict):
     duration: float
     distance: float
     max_altitude: float
+    altitude_offset: float
     start_location: BlLatLon
     camera_info: BlCameraInfoData|None

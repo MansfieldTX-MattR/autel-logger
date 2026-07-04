@@ -129,6 +129,7 @@ def build_export_data(flight: Flight) -> BlExportData:
         filename=flight.filename,
         distance=flight.distance,
         max_altitude=flight.max_altitude,
+        altitude_offset=flight.msl_offset if flight.msl_offset is not None else 0.0,
         start_location=flight.start_location.serialize(),
         flight_path=build_flight_path_data(flight),
         track_items=build_track_items_data(flight),

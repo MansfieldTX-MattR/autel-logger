@@ -60,6 +60,7 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             box.prop(selected_flight, "duration")
             box.prop(selected_flight, "distance")
             box.prop(selected_flight, "max_altitude")
+            box.prop(selected_flight, "altitude_offset")
 
             box = layout.box()
             box.label(text="Camera Info:")

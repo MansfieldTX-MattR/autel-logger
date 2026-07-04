@@ -5,6 +5,7 @@ from pathlib import Path
 import datetime
 from dataclasses import dataclass
 from fractions import Fraction
+from urllib.request import urlopen
 
 from loguru import logger
 
@@ -15,6 +16,33 @@ from ..parser.model import (
 )
 from ..config import Config
 from .media import VideoCacheData, ImageCacheData, CameraInfo
+
+
+
+class HomeLocationError(Exception):
+    """Raised when there is an error determining the home location of a flight"""
+    pass
+
+class HomeLocationMismatchError(HomeLocationError):
+    """Raised when there is a mismatch between the home location and the start location of a flight"""
+    pass
+
+class HomeLocationNotFoundError(HomeLocationError):
+    """Raised when the home location cannot be found in the flight data"""
+    pass
+
+class HomeLocationInvalidError(HomeLocationError):
+    """Raised when the home location is invalid (e.g., 0,0)"""
+    pass
+
+
+def get_altitude_msl_for_location(*locations: LatLon|LatLonAlt) -> tuple[float, ...]:
+    base_url = 'https://api.open-elevation.com/api/v1/lookup'
+    params = '|'.join([f'{loc.latitude},{loc.longitude}' for loc in locations])
+    url = f'{base_url}?locations={params}'
+    with urlopen(url) as response:
+        data = json.load(response)
+    return tuple(result['elevation'] for result in data['results'])
 
 
 @dataclass
@@ -44,6 +72,10 @@ class Flight:
     # max_flight_radius: float  # in meters
     start_location: LatLon
     """The starting location of the flight"""
+    home_location: LatLonAlt
+    """The home location of the flight"""
+    msl_offset: float|None
+    """The offset from the home location to mean sea level in meters, if known"""
     bounding_box: GeoBox
     """The bounding box of the flight path"""
     flight_controls_calibration: FlightControlsCalibration
@@ -70,6 +102,8 @@ class Flight:
         max_altitude: float
         battery_summary: BatterySummary.SerializeTD
         start_location: LatLon.SerializeTD
+        home_location: LatLonAlt.SerializeTD
+        msl_offset: float|None
         bounding_box: GeoBox.SerializeTD
         flight_controls_calibration: FlightControlsCalibration.SerializeTD
         camera_info: CameraInfo.SerializeTD | None
@@ -85,13 +119,72 @@ class Flight:
     @classmethod
     def from_model(cls, model: ModelResult) -> Self:
         """Create a Flight instance from a parsed :class:`~.parser.model.ModelResult`"""
+        def find_home_location_from_go_home_info() -> LatLonAlt:
+            """Find the :attr:`~.parser.model.GoHomeInfo.home_location` from the
+            :class:`~.parser.model.ParsedOutFull.go_home_info` records
+
+            Raises:
+
+                HomeLocationNotFoundError: If no home location is found in the records
+                HomeLocationMismatchError: If multiple home locations are found in the records
+                HomeLocationInvalidError: If the home location is invalid (0,0)
+
+            """
+            home_locations = [rec.home_location for rec in model.iter_records_by_type(ParsedOutFull)]
+            if not len(home_locations):
+                raise HomeLocationNotFoundError(f'No home location found for flight {model.filename}')
+            home_loc_set = set(home_locations)
+            home_loc_set.discard(LatLon(0.0, 0.0))
+            if len(home_loc_set) != 1:
+                raise HomeLocationMismatchError(f'Mismatched home locations in flight {model.filename}, {len(home_locations)=}, {home_loc_set=}')
+            home_location = home_locations[0]
+            if home_location == LatLon(0.0, 0.0):
+                raise HomeLocationInvalidError(f'Invalid start location {home_location} for flight {model.filename}')
+            return LatLonAlt(
+                home_location.latitude,
+                home_location.longitude,
+                0.0,
+            )
+        def find_home_location_from_last_track() -> LatLonAlt:
+            """Find the :attr:`~.parser.model.ParsedOutFull.drone_location` from the last
+            :class:`~.parser.model.ParsedOutFull` record
+
+            Raises:
+                HomeLocationNotFoundError: If no track records are found
+                HomeLocationInvalidError: If the last track record has an invalid location (0,0)
+            """
+            tracks = list(model.iter_records_by_type(ParsedOutFull))
+            if not len(tracks):
+                raise HomeLocationNotFoundError(f'No track records found for flight {model.filename}')
+            last_track = tracks[-1]
+            if last_track.drone_location == LatLon(0.0, 0.0):
+                raise HomeLocationInvalidError(f'Invalid drone location {last_track.drone_location} in last track for flight {model.filename}')
+            return LatLonAlt(
+                last_track.drone_location.latitude,
+                last_track.drone_location.longitude,
+                0.0,
+            )
+
+        try:
+            home_location = find_home_location_from_go_home_info()
+        except HomeLocationError as e:
+            logger.warning(f"Could not determine home location from go home info: {e}")
+            home_location = find_home_location_from_last_track()
+            logger.info(f"Using last track location as home location: {home_location}")
+        msl_offset = get_altitude_msl_for_location(home_location)[0]
         calibration = FlightControlsCalibration.from_records(*(
             parsed.flight_control
             for parsed in model.iter_records_by_type(ParsedOutFull, ParsedInFull)
         ))
         track_items: list[TrackItem] = []
         for i, parsed in enumerate(model.iter_records_by_type(ParsedOutFull, ParsedInFull)):
-            track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed, calibration)
+            track_item = TrackItem.from_parsed(
+                index=i,
+                start_time=model.header.flight_at,
+                parsed=parsed,
+                calibration=calibration,
+                home_location=home_location,
+            )
             track_items.append(track_item)
         # for i, parsed in enumerate(model.iter_sorted_records('out_full')):
         #     track_item = TrackItem.from_parsed(i, model.header.flight_at, parsed)
@@ -121,6 +214,8 @@ class Flight:
             # max_flight_radius=model.out_full.max_flight_radius,
             battery_summary=BatterySummary.from_records(model.header.battery_sn, track_items),
             start_location=model.header.start_location,
+            home_location=home_location,
+            msl_offset=msl_offset,
             bounding_box=bbox,
             flight_controls_calibration=calibration,
             camera_info=None,
@@ -142,6 +237,8 @@ class Flight:
             'max_altitude': self.max_altitude,
             'battery_summary': self.battery_summary.serialize(),
             'start_location': self.start_location.serialize(),
+            'home_location': self.home_location.serialize(),
+            'msl_offset': self.msl_offset,
             'bounding_box': self.bounding_box.serialize(),
             'flight_controls_calibration': self.flight_controls_calibration.serialize(),
             'osm_url': self.osm_url,
@@ -165,6 +262,8 @@ class Flight:
             max_altitude=data['max_altitude'],
             battery_summary=BatterySummary.deserialize(data['battery_summary']),
             start_location=LatLon.deserialize(data['start_location']),
+            home_location=LatLonAlt.deserialize(data['home_location']),
+            msl_offset=data.get('msl_offset'),
             bounding_box=GeoBox.deserialize(data['bounding_box']),
             flight_controls_calibration=FlightControlsCalibration.deserialize(
                 data['flight_controls_calibration']
@@ -417,7 +516,7 @@ class TrackItem(NamedTuple):
     speed: Speed
     """The drone's speed in m/s"""
     relative_location: PositionMeters|None
-    """The drone's location relative to the flight :attr:`~Flight.start_location`
+    """The drone's location relative to the flight :attr:`~Flight.home_location`
     in meters, or None if :attr:`location` is not available
     """
     distance: float|None
@@ -470,16 +569,12 @@ class TrackItem(NamedTuple):
         cls,
         index: int,
         start_time: datetime.datetime,
+        home_location: LatLonAlt,
         parsed: ParsedOutFull|ParsedInFull,
         calibration: FlightControlsCalibration|None = None,
     ) -> Self:
         """Create an instance from a parsed record"""
         if isinstance(parsed, ParsedOutFull):
-            home_location = LatLonAlt(
-                parsed.home_location.latitude,
-                parsed.home_location.longitude,
-                0,
-            )
             relative_location = parsed.drone_location.to_position_meters(home_location)
             distance = parsed.go_home_info.distance
             location = LatLon(

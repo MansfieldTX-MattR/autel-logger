@@ -690,6 +690,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         duration: float
         distance: float
         max_altitude: float
+        altitude_offset: float
         start_latitude: float
         start_longitude: float
         track_items: CollectionProp[TrackItemProperties]
@@ -739,6 +740,13 @@ class FlightProperties(bpy.types.PropertyGroup):
         max_altitude: bpy.props.FloatProperty(
             name="Max Altitude",
             description="Maximum altitude reached during the flight in meters",
+            subtype='DISTANCE',
+            unit='LENGTH',
+            default=0.0,
+        )
+        altitude_offset: bpy.props.FloatProperty(
+            name="Altitude Offset",
+            description="Altitude offset from the starting point in meters",
             subtype='DISTANCE',
             unit='LENGTH',
             default=0.0,
@@ -896,6 +904,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         flight.duration = data['duration']
         flight.distance = data['distance']
         flight.max_altitude = data['max_altitude']
+        flight.altitude_offset = data['altitude_offset']
         flight.start_latitude = data['start_location']['latitude']
         flight.start_longitude = data['start_location']['longitude']
         if data['camera_info'] is not None:
