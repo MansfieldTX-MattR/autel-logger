@@ -68,6 +68,13 @@ def show_config(ctx: ClickContext):
     help='Directory to store parsed flight log files (JSON format)',
 )
 @click.option(
+    '--raw-log-dir',
+    type=click.Path(
+        exists=True, file_okay=False, path_type=Path,
+    ),
+    help='Directory to store raw flight log files',
+)
+@click.option(
     '--data-dir',
     type=click.Path(
         file_okay=False, path_type=Path,
@@ -93,6 +100,7 @@ def configure(
     ctx: ClickContext,
     flight_log_dir: Path | None,
     data_dir: Path | None,
+    raw_log_dir: Path | None,
     cache_dir: Path | None,
     blender_export_dir: Path | None,
 ):
@@ -109,6 +117,11 @@ def configure(
         data_dir = data_dir.expanduser().resolve()
         data_dir.mkdir(parents=True, exist_ok=True)
         cfg.data_dir = data_dir
+        changed = True
+    if raw_log_dir is not None:
+        raw_log_dir = raw_log_dir.expanduser().resolve()
+        raw_log_dir.mkdir(parents=True, exist_ok=True)
+        cfg.raw_log_dir = raw_log_dir
         changed = True
     if cache_dir is not None:
         cache_dir = cache_dir.expanduser().resolve()
@@ -295,7 +308,8 @@ def batch_export_json(
 ):
     """Parse all flight logs in a directory and export as raw JSON data"""
     input_dir = input_dir.expanduser().resolve()
-    output_dir = ctx.config.data_dir
+    raw_log_dir = ctx.config.raw_log_dir
+    raw_log_dir.mkdir(parents=True, exist_ok=True)
 
     count = 0
     skipped = 0
@@ -306,7 +320,13 @@ def batch_export_json(
             continue
         if p.suffix != '':
             continue
-        flight = parse_file(p)
+        parsed = parse_log_file(p)
+        model = ModelResult.from_parse_result(parsed)
+        raw_output_file = raw_log_dir / f'{p.name}.json'
+        if not raw_output_file.exists():
+            raw_output_file.write_text(json.dumps(model.serialize_raw(), indent=2))
+            click.echo(f'Wrote raw model data to {raw_output_file}')
+        flight = Flight.from_model(model)
         if process_videos:
             flight.search_videos(ctx.config)
         if process_images:

@@ -84,6 +84,8 @@ class Config:
     flight_log_dir: Path|None = None
     """Directory to store parsed log files"""
     data_dir: Path = DATA_DIR
+    raw_log_dir: Path = DATA_DIR / 'raw_logs'
+    """Directory to store raw log files"""
     cache_dir: Path = CACHE_DIR
     """Directory to store cached data (such as video metadata)"""
     blender_export_dir: Path|None = None
@@ -104,6 +106,7 @@ class Config:
         """:meta private:"""
         flight_log_dir: str|None
         data_dir: str
+        raw_log_dir: str
         cache_dir: str
         blender_export_dir: str|None
         video_search_paths: list[MediaSearchPath[Literal['video']].SerializeTD]
@@ -115,6 +118,7 @@ class Config:
         return cls(
             flight_log_dir=None if data['flight_log_dir'] is None else Path(data['flight_log_dir']),
             data_dir=Path(data['data_dir']),
+            raw_log_dir=Path(data['raw_log_dir']),
             cache_dir=Path(data['cache_dir']),
             blender_export_dir=None if data['blender_export_dir'] is None else Path(data['blender_export_dir']),
             video_search_paths=[
@@ -131,6 +135,7 @@ class Config:
         return self.SerializeTD(
             flight_log_dir=None if self.flight_log_dir is None else str(self.flight_log_dir),
             data_dir=str(self.data_dir),
+            raw_log_dir=str(self.raw_log_dir),
             cache_dir=str(self.cache_dir),
             blender_export_dir=None if self.blender_export_dir is None else str(self.blender_export_dir),
             video_search_paths=[
