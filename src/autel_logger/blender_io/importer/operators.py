@@ -328,6 +328,9 @@ class SCENE_OT_autel_flight_log_rebuild_proxy(bpy.types.Operator):
             int(round(start_frame)),
             int(round(end_frame))
         )
+        assert context.workspace is not None
+        if context.workspace.sequencer_scene is None:
+            context.workspace.sequencer_scene = context.scene
 
         # Work in a temporary sequence editor to add the strip and build proxy
         with area_override(context, 'SEQUENCE_EDITOR') as override:
