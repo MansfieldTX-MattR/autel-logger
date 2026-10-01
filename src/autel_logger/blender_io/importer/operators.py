@@ -342,6 +342,7 @@ class SCENE_OT_autel_flight_log_rebuild_proxy(bpy.types.Operator):
                 adjust_playback_rate=False,
                 sound=False,
                 use_framerate=False,
+                move_strips=False,
             )
             seq = sequencer.active_strip
             self.report({'INFO'}, f'Active strip: {seq}, {sequencer.active_strip=}')
