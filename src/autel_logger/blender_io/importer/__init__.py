@@ -14,7 +14,7 @@ bl_info = {
     "name": "Autel Flight Log Importer",
     "author": "Matt Reid",
     "version": (0, 1, 0),
-    "blender": (3, 0, 0),
+    "blender": (5, 2, 0),
     "location": "File > Import > Autel Flight Log (.json)",
     "description": "Import Autel flight log data and visualize in 3D view",
     "warning": "",
