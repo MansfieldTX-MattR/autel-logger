@@ -47,7 +47,6 @@ def set_clip_proxy(
     clip.proxy.build_50 = proxy_size == ProxySize.PROXY_50
     clip.proxy.build_75 = proxy_size == ProxySize.PROXY_75
     clip.proxy.build_100 = proxy_size == ProxySize.PROXY_100
-    clip.proxy.timecode = 'RECORD_RUN'
     if isinstance(clip, bpy.types.MovieStrip):
         clip.proxy.use_overwrite = False
     clip.use_proxy = True
