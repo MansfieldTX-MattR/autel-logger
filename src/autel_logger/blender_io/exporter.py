@@ -35,7 +35,7 @@ def build_track_items_data(flight: Flight) -> list[BlTrackItemData]:
     items = []
     prev_drone_rot: Orientation[Literal['radians']] | None = None
     prev_gimbal_rot: Orientation[Literal['radians']] | None = None
-    orientation_offset = Orientation(0, 0, 180, 'degrees').to_radians()
+    orientation_offset = Orientation(0, 0, 0, 'degrees').to_radians()
     for item in flight.track_items:
         drone_rot = item.drone_orientation.to_radians()
         gimbal_rot = item.gimbal_orientation.to_radians()
