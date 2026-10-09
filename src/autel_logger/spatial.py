@@ -95,44 +95,38 @@ class LatLon(NamedTuple):
     #     return Point(self.latitude, self.longitude)
 
     def distance_to_2d(self, other: LatLon) -> PositionMeters:
-        """
-        Haversine formula to calculate the great-circle distance between two points
-        on the Earth's surface given their latitude and longitude.
-        This gives the shortest distance over the earth's surface.
-        However, it does not give x and y components directly.
-        To get x and y components, we can calculate the bearing and then
-        decompose the distance into x and y using trigonometry.
+        r"""Calculate the 2D distance to a reference LatLon point using the
+        web mercator projection.
+
+        This method uses the following web mercator projection formulas:
+
+        .. math::
+
+
+            X_{\text{local}} &= R\cdot (\lambda -\lambda_{0}) \\
+            Y_{\text{local}} &= R\cdot \ln \left(\frac{\tan \left(\frac{\pi }{4}+\frac{\varphi }{2}\right)}{\tan \left(\frac{\pi }{4}+\frac{\varphi _{0}}{2}\right)}\right)
+
+
+        where:
+
+        - :math:`R` is the radius of the Earth in meters (6371000 m).
+        - :math:`\lambda` and :math:`\varphi` are the longitude and latitude
+            of the point in radians (respectively).
+        - :math:`\lambda_0` and :math:`\varphi_0` are the longitude and latitude
+            of the reference point in radians (respectively).
         """
         R = 6371000  # Radius of the Earth in meters
-        phi_1 = math.radians(self.latitude)
-        phi_2 = math.radians(other.latitude)
-        delta_phi = math.radians(other.latitude - self.latitude)
-        delta_lambda = math.radians(other.longitude - self.longitude)
-        a = (math.sin(delta_phi / 2) ** 2 +
-             math.cos(phi_1) * math.cos(phi_2) *
-             math.sin(delta_lambda / 2) ** 2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = R * c  # in meters
-        if distance == 0:
-            return PositionMeters(0.0, 0.0, 0.0)
-        # Calculate bearing
-        y = math.sin(delta_lambda) * math.cos(phi_2)
-        x = (math.cos(phi_1) * math.sin(phi_2) -
-             math.sin(phi_1) * math.cos(phi_2) * math.cos(delta_lambda))
-        bearing = math.atan2(y, x)
-        # Decompose distance into x and y components
-        x_comp = distance * math.cos(bearing)
-        y_comp = distance * math.sin(bearing)
-        result = PositionMeters(y_comp, x_comp, 0.0)
-        if self.latitude > other.latitude:
-            assert result.y < 0, f"{self.latitude} > {other.latitude} but {result.y} >= 0"
-        else:
-            assert result.y >= 0, f"{self.latitude} <= {other.latitude} but {result.y} < 0"
-        if self.longitude > other.longitude:
-            assert result.x < 0, f"{self.longitude} > {other.longitude} but {result.x} >= 0"
-        else:
-            assert result.x >= 0, f"{self.longitude} <= {other.longitude} but {result.x} < 0"
-        return result
+        lambda_0 = math.radians(other.longitude)
+        phi_0 = math.radians(other.latitude)
+        lambda_ = math.radians(self.longitude)
+        phi = math.radians(self.latitude)
+
+        x_local = R * (lambda_ - lambda_0)
+        y_local = R * math.log(
+            math.tan(math.pi / 4 + phi / 2) / math.tan(math.pi / 4 + phi_0 / 2)
+        )
+
+        return PositionMeters(x_local, y_local, 0.0)
 
 
     def to_position_meters(self, reference: LatLon) -> PositionMeters:
