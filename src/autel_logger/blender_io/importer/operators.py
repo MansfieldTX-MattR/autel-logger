@@ -737,12 +737,12 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         return left_stick, right_stick
 
     def _create_object(
-            self,
-            obj_type: BlObjectType,
-            name: str,
-            parent: bpy.types.Object|None = None,
-            primitive: BlMeshPrimitiveType|None = None
-        ) -> bpy.types.Object:
+        self,
+        obj_type: BlObjectType,
+        name: str,
+        parent: bpy.types.Object|None = None,
+        primitive: BlMeshPrimitiveType|None = None
+    ) -> bpy.types.Object:
         if obj_type == 'MESH':
             if primitive == 'CIRCLE':
                 bpy.ops.mesh.primitive_circle_add(vertices=32, radius=1.0)
