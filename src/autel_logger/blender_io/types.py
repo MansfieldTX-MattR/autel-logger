@@ -9,6 +9,7 @@ __all__ = [
     'BlObjectType',
     'BlMeshPrimitiveType',
     'BlObjectAnimationData',
+    'BlAnimationInterpolation',
     'BlObjectData',
     'BlObjectLatLonAltData',
     'BlObjectWithVerticesData',
@@ -44,6 +45,10 @@ type BlMeshPrimitiveType = Literal[
     'CIRCLE', 'PLANE',
 ]
 
+
+type BlAnimationInterpolation = Literal[
+    'CONSTANT', 'LINEAR', 'BEZIER'
+]
 
 class BlObjectAnimationData(TypedDict):
     time: float

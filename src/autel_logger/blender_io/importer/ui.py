@@ -17,6 +17,7 @@ from .operators import (
     SCENE_OT_autel_flight_log_prev_video_item,
     SCENE_OT_autel_flight_log_import_video,
     SCENE_OT_autel_flight_log_rebuild_proxy,
+    SCENE_OT_autel_flight_log_update_animation_interpolation,
 )
 
 
@@ -61,6 +62,14 @@ class OBJECT_PT_flight_log_panel(bpy.types.Panel):
             box.prop(selected_flight, "distance")
             box.prop(selected_flight, "max_altitude")
             box.prop(selected_flight, "altitude_offset")
+
+            box = layout.box()
+            box.label(text="Animation Interpolation:")
+            box.prop(selected_flight, "animation_interpolation", text="")
+            box.operator(
+                SCENE_OT_autel_flight_log_update_animation_interpolation.bl_idname,
+                text="Update"
+            )
 
             box = layout.box()
             box.label(text="Camera Info:")

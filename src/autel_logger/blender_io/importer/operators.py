@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal, NamedTuple, TYPE_CHECKING, Self
+from typing import Literal, NamedTuple, TYPE_CHECKING, Self, cast
 import json
 from pathlib import Path
 import math
@@ -7,6 +7,7 @@ import contextlib
 
 import bpy
 from mathutils import Vector
+from bpy_extras import anim_utils
 
 if TYPE_CHECKING:
     from ..types import *
@@ -173,6 +174,68 @@ def animate_objects(
             right_stick_obj.keyframe_insert('delta_location', index=-1, frame=frame)
     finally:
         scene.frame_set(current_frame)
+
+
+def get_object_fcurves(obj: bpy.types.Object|bpy.types.NodeTree) -> bpy.types.ActionChannelbagFCurves | None:
+    """Get the :class:`bpy.types.ActionChannelbagFCurves` for the given object or node tree
+    """
+    if obj.animation_data is None or obj.animation_data.action is None:
+        return None
+    action_slot = obj.animation_data.action_slot
+    if action_slot is None:
+        return None
+    channel_bag = anim_utils.action_get_channelbag_for_slot(obj.animation_data.action, action_slot)
+    if channel_bag is None:
+        return None
+    # NOTE: This cast is necessary because the type stubs for
+    # `action_get_channelbag_for_slot` currently sets the return to `None`.
+    channel_bag = cast(bpy.types.ActionChannelbag, channel_bag)
+    return channel_bag.fcurves
+
+
+def set_animation_interpolation(
+    obj: bpy.types.Object|bpy.types.NodeTree,
+    interpolation: BlAnimationInterpolation,
+    skip_for_data_path: str|None = None
+) -> None:
+    """Set the animation interpolation for all keyframes of the given object or node tree.
+
+    Args:
+        obj: The Blender object or node tree whose keyframes will be updated.
+        interpolation: The interpolation mode to set for the keyframes.
+        skip_for_data_path: Optional data path to skip when setting interpolation.
+    """
+    fcurves = get_object_fcurves(obj)
+    if fcurves is None:
+        return
+    for fcurve in fcurves:
+        if skip_for_data_path is not None and fcurve.data_path == skip_for_data_path:
+            continue
+        for keyframe in fcurve.keyframe_points:
+            keyframe.interpolation = interpolation
+
+
+def set_flight_animation_interpolation(flight_props: FlightProperties) -> None:
+    """Set the animation interpolation for all animated objects related to a flight
+
+    This updates the interpolation mode based on the
+    :attr:`.FlightProperties.animation_interpolation` attribute.
+    """
+    anim_objects = AnimatedObjects.from_flight_props(flight_props)
+    interpolation_mode = flight_props.animation_interpolation
+
+    set_animation_interpolation(anim_objects.drone_obj, interpolation_mode)
+    set_animation_interpolation(anim_objects.gimbal_obj, interpolation_mode)
+    set_animation_interpolation(anim_objects.left_stick_obj, interpolation_mode)
+    set_animation_interpolation(anim_objects.right_stick_obj, interpolation_mode)
+
+    # Keep the speed vector interpolation set to Bezier
+    set_animation_interpolation(
+        anim_objects.speed_vector_obj,
+        interpolation_mode,
+        skip_for_data_path='modifiers["GeometryNodes"].properties.inputs.Socket_2.value'
+    )
+
 
 
 def next_prev_item_helper(context: bpy.types.Context, item_type: Literal['TRACK', 'VIDEO'], direction: Literal['NEXT', 'PREV']) -> set[str]:
@@ -594,6 +657,36 @@ class SCENE_OT_autel_flight_log_import_video(bpy.types.Operator):
         bpy.utils.unregister_class(cls)
 
 
+class SCENE_OT_autel_flight_log_update_animation_interpolation(bpy.types.Operator):
+    """Update flight log animation interpolation mode"""
+    bl_idname = "scene.autel_flight_log_update_animation_interpolation"
+    bl_label = "Update Flight Log Animation Interpolation"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        selected_flight = FlightProperties.get_selected_flight(context)
+        return selected_flight is not None
+
+    def execute(self, context: bpy.types.Context) -> set[str]:
+        selected_flight = FlightProperties.get_selected_flight(context)
+        if selected_flight is None:
+            self.report({'WARNING'}, "No flight log selected")
+            return {'CANCELLED'}
+        set_flight_animation_interpolation(selected_flight)
+        self.report({'INFO'}, f"Updated animation interpolation for flight log: {selected_flight.name}")
+        return {'FINISHED'}
+
+    @classmethod
+    def _register_cls(cls) -> None:
+        bpy.utils.register_class(cls)
+
+    @classmethod
+    def _unregister_cls(cls) -> None:
+        bpy.utils.unregister_class(cls)
+
+
+
 class SCENE_OT_autel_flight_log_update_animation(bpy.types.Operator):
     """Update flight log animation keyframes"""
     bl_idname = "scene.autel_flight_log_update_animation"
@@ -898,6 +991,7 @@ def menu_func_import(self, context: bpy.types.Context) -> None:
 
 def register_classes() -> None:
     IMPORT_SCENE_OT_autel_flight_log._register_cls()
+    SCENE_OT_autel_flight_log_update_animation_interpolation._register_cls()
     SCENE_OT_autel_flight_log_update_animation._register_cls()
     SCENE_OT_autel_flight_log_next_item._register_cls()
     SCENE_OT_autel_flight_log_prev_item._register_cls()
@@ -910,6 +1004,7 @@ def register_classes() -> None:
 
 def unregister_classes() -> None:
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    SCENE_OT_autel_flight_log_update_animation_interpolation._unregister_cls()
     SCENE_OT_autel_flight_log_update_animation._unregister_cls()
     IMPORT_SCENE_OT_autel_flight_log._unregister_cls()
     SCENE_OT_autel_flight_log_next_item._unregister_cls()

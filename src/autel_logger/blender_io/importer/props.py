@@ -706,6 +706,7 @@ class FlightProperties(bpy.types.PropertyGroup):
         left_stick: bpy.types.Object
         right_stick: bpy.types.Object
         camera_info: CameraInfoProperties
+        animation_interpolation: BlAnimationInterpolation
     else:
         name: bpy.props.StringProperty(
             name="Flight Name",
@@ -839,6 +840,16 @@ class FlightProperties(bpy.types.PropertyGroup):
             name="Camera Info",
             description="Camera information for the flight",
             type=CameraInfoProperties,
+        )
+        animation_interpolation: bpy.props.EnumProperty(
+            name="Animation Interpolation",
+            description="Interpolation method for the animation",
+            default='LINEAR',
+            items=[
+                ('CONSTANT', "Constant", ""),
+                ('LINEAR', "Linear", ""),
+                ('BEZIER', "Bezier", ""),
+            ],
         )
 
     @classmethod
