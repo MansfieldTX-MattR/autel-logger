@@ -6,6 +6,7 @@ import math
 import contextlib
 
 import bpy
+from mathutils import Vector
 
 if TYPE_CHECKING:
     from ..types import *
@@ -117,15 +118,10 @@ def animate_objects(
         for item in flight_props.track_items:
             frame = item.frame
             if item.has_location:
-                drone_obj.location.x = item.relative_location[0]
-                drone_obj.location.y = item.relative_location[1]
-                gimbal_obj.location.x = item.relative_location[0]
-                gimbal_obj.location.y = item.relative_location[1]
-                drone_obj.location.z = item.relative_height
-                gimbal_obj.location.z = item.relative_height
-                speed_vector_obj.location.x = item.relative_location[0]
-                speed_vector_obj.location.y = item.relative_location[1]
-                speed_vector_obj.location.z = item.relative_height
+                location = Vector((*item.relative_location, item.relative_height))
+                drone_obj.location = location
+                gimbal_obj.location = location
+                speed_vector_obj.location = location
             drone_obj.rotation_euler = item.drone_orientation
             gimbal_obj.rotation_euler = item.gimbal_orientation
             left_prop = left_stick_props[item.name]
