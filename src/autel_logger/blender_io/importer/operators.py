@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, NamedTuple, TYPE_CHECKING, Self
 import json
 from pathlib import Path
 import math
@@ -72,6 +72,43 @@ def find_open_sequencer_channel(
 
 
 
+class AnimatedObjects(NamedTuple):
+    """Collection of all animated objects related to a flight
+    """
+    drone_obj: bpy.types.Object
+    gimbal_obj: bpy.types.Object
+    left_stick_obj: bpy.types.Object
+    right_stick_obj: bpy.types.Object
+    speed_vector_obj: bpy.types.Object
+    speed_vector_node_group: bpy.types.NodeTree
+    speed_vector_input_node: bpy.types.Node
+
+    @classmethod
+    def from_flight_props(cls, flight_props: FlightProperties) -> Self:
+        """Create an instance from :class:`~.props.FlightProperties`
+        """
+        assert flight_props.drone_object is not None
+        assert flight_props.gimbal_object is not None
+        assert flight_props.left_stick is not None
+        assert flight_props.right_stick is not None
+        assert flight_props.speed_vector_object is not None
+        assert flight_props.speed_vector_geo_nodes is not None
+        speed_vector_modifier = flight_props.speed_vector_object.modifiers['GeometryNodes']
+        assert isinstance(speed_vector_modifier, bpy.types.NodesModifier)
+        assert speed_vector_modifier.properties is not None # type: ignore[attr-defined]
+        speed_vector_input_node = speed_vector_modifier.properties.inputs.Socket_2 # type: ignore[attr-defined]
+        assert speed_vector_input_node is not None
+        return cls(
+            drone_obj=flight_props.drone_object,
+            gimbal_obj=flight_props.gimbal_object,
+            left_stick_obj=flight_props.left_stick,
+            right_stick_obj=flight_props.right_stick,
+            speed_vector_obj=flight_props.speed_vector_object,
+            speed_vector_node_group=flight_props.speed_vector_geo_nodes,
+            speed_vector_input_node=speed_vector_input_node,
+        )
+
+
 def animate_objects(
     flight_props: FlightProperties,
     context: bpy.types.Context,
@@ -86,31 +123,20 @@ def animate_objects(
     current_frame = scene.frame_current
     scene.frame_start = 0
     scene.frame_end = max((item.frame for item in flight_props.track_items), default=1)
-    drone_obj = flight_props.drone_object
-    gimbal_obj = flight_props.gimbal_object
-    speed_vector_obj = flight_props.speed_vector_object
-    speed_vector_node_group = flight_props.speed_vector_geo_nodes
-
-    left_stick_obj = flight_props.left_stick
-    right_stick_obj = flight_props.right_stick
-    assert drone_obj is not None
-    assert gimbal_obj is not None
-    assert left_stick_obj is not None
-    assert right_stick_obj is not None
-    assert speed_vector_obj is not None
-    assert speed_vector_node_group is not None
-
-    speed_vector_modifier = speed_vector_obj.modifiers['GeometryNodes']
-    assert isinstance(speed_vector_modifier, bpy.types.NodesModifier)
-    assert speed_vector_modifier.properties is not None # type: ignore[attr-defined]
-    speed_vector_input_node = speed_vector_modifier.properties.inputs.Socket_2 # type: ignore[attr-defined]
-    assert speed_vector_input_node is not None
+    anim_objects = AnimatedObjects.from_flight_props(flight_props)
+    drone_obj = anim_objects.drone_obj
+    gimbal_obj = anim_objects.gimbal_obj
+    left_stick_obj = anim_objects.left_stick_obj
+    right_stick_obj = anim_objects.right_stick_obj
+    speed_vector_obj = anim_objects.speed_vector_obj
+    speed_vector_node_group = anim_objects.speed_vector_node_group
+    speed_vector_input_node = anim_objects.speed_vector_input_node
     if not initial:
-        clear_all_keyframes(flight_props.drone_object)
-        clear_all_keyframes(flight_props.gimbal_object)
-        clear_all_keyframes(flight_props.left_stick)
-        clear_all_keyframes(flight_props.right_stick)
-        clear_all_keyframes(flight_props.speed_vector_object)
+        clear_all_keyframes(drone_obj)
+        clear_all_keyframes(gimbal_obj)
+        clear_all_keyframes(left_stick_obj)
+        clear_all_keyframes(right_stick_obj)
+        clear_all_keyframes(speed_vector_obj)
         clear_all_keyframes(speed_vector_node_group)
     left_stick_props = FlightStickProperties.get_from_object(left_stick_obj)
     right_stick_props = FlightStickProperties.get_from_object(right_stick_obj)
