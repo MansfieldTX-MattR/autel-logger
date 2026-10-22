@@ -7,6 +7,7 @@ __all__ = [
     'BlVector2D',
     'BlVector3D',
     'BlObjectType',
+    'BlMeshPrimitiveType',
     'BlObjectAnimationData',
     'BlObjectData',
     'BlObjectLatLonAltData',
@@ -38,6 +39,11 @@ type BlObjectType = Literal[
     # 'SURFACE', 'META', 'FONT', 'ARMATURE',
     # 'LATTICE', 'LIGHT', 'SPEAKER', 'LIGHT_PROBE'
 ]
+
+type BlMeshPrimitiveType = Literal[
+    'CIRCLE', 'PLANE',
+]
+
 
 class BlObjectAnimationData(TypedDict):
     time: float

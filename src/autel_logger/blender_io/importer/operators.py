@@ -675,12 +675,10 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         return camera
 
     def build_flight_path(self, data: BlFlightPathData, context: bpy.types.Context, parent: bpy.types.Object) -> bpy.types.Object:
-        bpy.ops.curve.primitive_bezier_curve_add()
-        obj = context.active_object
+        obj = self._create_object('CURVE', 'Flight_Path', parent=parent)
         assert obj is not None
         assert obj.type == 'CURVE'
         assert isinstance(obj.data, bpy.types.Curve)
-        obj.parent = parent
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.curve.delete(type='VERT')
         path_props = FlightPathVertexProperties.get_from_object(obj)
@@ -703,11 +701,8 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         parent: bpy.types.Object|None
     ) -> tuple[bpy.types.Object, bpy.types.Object]:
         stick_parent = self._create_object('EMPTY', 'Flight Controls', parent=parent)
-        bpy.ops.mesh.primitive_circle_add(vertices=32, radius=1.0)
-        left_stick_circle = context.active_object
+        left_stick_circle = self._create_object('MESH', 'Left_Stick_Circle', parent=stick_parent, primitive='CIRCLE')
         assert left_stick_circle is not None
-        left_stick_circle.name = 'Left_Stick_Circle'
-        left_stick_circle.parent = stick_parent
         circle_mesh = left_stick_circle.data
         assert circle_mesh is not None
         assert isinstance(circle_mesh, bpy.types.Mesh)
@@ -739,13 +734,26 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
 
         return left_stick, right_stick
 
-    def _create_object(self, obj_type: BlObjectType, name: str, parent: bpy.types.Object|None = None) -> bpy.types.Object:
+    def _create_object(
+            self,
+            obj_type: BlObjectType,
+            name: str,
+            parent: bpy.types.Object|None = None,
+            primitive: BlMeshPrimitiveType|None = None
+        ) -> bpy.types.Object:
         if obj_type == 'MESH':
-            bpy.ops.mesh.primitive_cube_add()
+            if primitive == 'CIRCLE':
+                bpy.ops.mesh.primitive_circle_add(vertices=32, radius=1.0)
+            elif primitive == 'PLANE':
+                bpy.ops.mesh.primitive_plane_add(size=1.0)
+            else:
+                bpy.ops.mesh.primitive_cube_add()
         elif obj_type == 'EMPTY':
             bpy.ops.object.empty_add(type='PLAIN_AXES')
         elif obj_type == 'CAMERA':
             bpy.ops.object.camera_add()
+        elif obj_type == 'CURVE':
+            bpy.ops.curve.primitive_bezier_curve_add()
         else:
             raise ValueError(f"Unsupported object type: {obj_type}")
         obj = bpy.context.active_object
