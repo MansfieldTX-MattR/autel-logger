@@ -708,6 +708,8 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         assert isinstance(circle_mesh, bpy.types.Mesh)
         right_stick_circle = left_stick_circle.copy()
         right_stick_circle.name = 'Right_Stick_Circle'
+        left_stick_circle.location = (0.0, 0.0, 0.0)
+        right_stick_circle.location = (0.0, 0.0, 0.0)
 
         left_stick = left_stick_circle.copy()
         left_stick.name = 'Left_Stick'
@@ -759,6 +761,7 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         obj = bpy.context.active_object
         assert obj is not None
         assert obj.type == obj_type
+        obj.location = (0.0, 0.0, 0.0)
         if parent is not None:
             obj.parent = parent
         obj.name = name
