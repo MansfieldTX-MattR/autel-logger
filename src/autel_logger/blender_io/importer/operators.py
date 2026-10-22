@@ -76,7 +76,7 @@ def animate_objects(
     context: bpy.types.Context,
     initial: bool,
 ) -> None:
-    def clear_all_keyframes(obj: bpy.types.Object) -> None:
+    def clear_all_keyframes(obj: bpy.types.Object|bpy.types.NodeTree) -> None:
         if obj.animation_data is not None and obj.animation_data.action is not None:
             obj.animation_data_clear()
 
@@ -87,17 +87,30 @@ def animate_objects(
     scene.frame_end = max((item.frame for item in flight_props.track_items), default=1)
     drone_obj = flight_props.drone_object
     gimbal_obj = flight_props.gimbal_object
+    speed_vector_obj = flight_props.speed_vector_object
+    speed_vector_node_group = flight_props.speed_vector_geo_nodes
+
     left_stick_obj = flight_props.left_stick
     right_stick_obj = flight_props.right_stick
     assert drone_obj is not None
     assert gimbal_obj is not None
     assert left_stick_obj is not None
     assert right_stick_obj is not None
+    assert speed_vector_obj is not None
+    assert speed_vector_node_group is not None
+
+    speed_vector_modifier = speed_vector_obj.modifiers['GeometryNodes']
+    assert isinstance(speed_vector_modifier, bpy.types.NodesModifier)
+    assert speed_vector_modifier.properties is not None # type: ignore[attr-defined]
+    speed_vector_input_node = speed_vector_modifier.properties.inputs.Socket_2 # type: ignore[attr-defined]
+    assert speed_vector_input_node is not None
     if not initial:
         clear_all_keyframes(flight_props.drone_object)
         clear_all_keyframes(flight_props.gimbal_object)
         clear_all_keyframes(flight_props.left_stick)
         clear_all_keyframes(flight_props.right_stick)
+        clear_all_keyframes(flight_props.speed_vector_object)
+        clear_all_keyframes(speed_vector_node_group)
     left_stick_props = FlightStickProperties.get_from_object(left_stick_obj)
     right_stick_props = FlightStickProperties.get_from_object(right_stick_obj)
     try:
@@ -110,6 +123,9 @@ def animate_objects(
                 gimbal_obj.location.y = item.relative_location[1]
                 drone_obj.location.z = item.relative_height
                 gimbal_obj.location.z = item.relative_height
+                speed_vector_obj.location.x = item.relative_location[0]
+                speed_vector_obj.location.y = item.relative_location[1]
+                speed_vector_obj.location.z = item.relative_height
             drone_obj.rotation_euler = item.drone_orientation
             gimbal_obj.rotation_euler = item.gimbal_orientation
             left_prop = left_stick_props[item.name]
@@ -119,8 +135,14 @@ def animate_objects(
             right_stick_obj.delta_location.x = right_prop.position[0]
             right_stick_obj.delta_location.y = right_prop.position[1]
 
+            speed_vector_input_node['value'] = item.speed
+
+            data_path = 'modifiers["GeometryNodes"].properties.inputs.Socket_2.value'
+            speed_vector_obj.keyframe_insert(data_path, frame=frame)
+
             if item.has_location:
                 drone_obj.keyframe_insert('location', frame=frame)
+                speed_vector_obj.keyframe_insert('location', frame=frame)
             drone_obj.keyframe_insert('rotation_euler', frame=frame)
             if item.has_location:
                 gimbal_obj.keyframe_insert('location', frame=frame)
@@ -639,11 +661,14 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         gimbal_empty = self._create_object('EMPTY', 'Gimbal_Empty')
         gimbal_empty.empty_display_type = 'ARROWS'
         gimbal_empty.parent = parent_object
+        speed_vector_obj, speed_vector_nodes = self._build_speed_vector_object(context, parent_object)
         camera = self._setup_camera(flight_props, gimbal_empty, context)
         flight_props.parent_object = parent_object
         flight_props.drone_object = drone_empty
         flight_props.gimbal_object = gimbal_empty
         flight_props.flight_path_object = flight_path
+        flight_props.speed_vector_object = speed_vector_obj
+        flight_props.speed_vector_geo_nodes = speed_vector_nodes
         flight_props.camera_object = camera
         bpy.ops.scene.autel_flight_log_update_animation() # type: ignore[attr-defined]
         return {'FINISHED'}
@@ -673,6 +698,72 @@ class IMPORT_SCENE_OT_autel_flight_log(bpy.types.Operator):
         # rot_constraint.invert_z = True
         rot_constraint.mix_mode = 'ADD'
         return camera
+
+    def _build_speed_vector_object(
+        self, context: bpy.types.Context, parent: bpy.types.Object
+    ) -> tuple[bpy.types.Object, bpy.types.GeometryNodeTree]:
+        obj = self._create_object(
+            'MESH', 'Speed_Vector_Object', parent=parent, primitive='PLANE',
+        )
+        assert obj is not None
+        assert obj.type == 'MESH'
+        assert obj.data is not None
+        obj.data.name = 'Speed_Vector_Mesh'
+        bpy.ops.node.new_geometry_nodes_modifier()
+        geo_node_mod = obj.modifiers[-1]
+        assert isinstance(geo_node_mod, bpy.types.NodesModifier)
+        node_group = geo_node_mod.node_group
+        assert isinstance(node_group, bpy.types.GeometryNodeTree)
+
+        # Add a 3D vector input to the geometry nodes modifier
+        assert node_group.interface is not None
+        speed_socket_interface = node_group.interface.new_socket(
+            name='Speed Vector',
+            in_out='INPUT',
+            socket_type='NodeSocketVector',
+        )
+        assert isinstance(speed_socket_interface, bpy.types.NodeTreeInterfaceSocketVector)
+        speed_socket_interface.subtype = 'VELOCITY'
+
+        speed_socket = node_group.nodes['Group Input'].outputs[speed_socket_interface.name]
+
+        # add a 'Mesh Line" node
+        line_node = node_group.nodes.new(type='GeometryNodeMeshLine')
+        line_node.location = (20, 0)
+
+        # `default_value` is not currently exposed in the type hints for `NodeSocket`
+        line_node.inputs['Count'].default_value = 2 # type: ignore[attr-defined]
+
+
+        # Build nodes to swap the X and Y axes of the speed vector
+        # (it's logged by the drone with X and Y swapped)
+        sep_xyz = node_group.nodes.new(type='ShaderNodeSeparateXYZ')
+        comb_xyz = node_group.nodes.new(type='ShaderNodeCombineXYZ')
+        sep_xyz.location = (-390, -220)
+        comb_xyz.location = (-200, -220)
+        for out_ax, in_ax in [('X', 'Y'), ('Y', 'X'), ('Z', 'Z')]:
+            node_group.links.new(
+                sep_xyz.outputs[out_ax],
+                comb_xyz.inputs[in_ax],
+            )
+
+        # Connect `speed_socket -> sep_xyz-> comb_xyz -> line_node.Offset`
+        node_group.links.new(
+            speed_socket,
+            sep_xyz.inputs['Vector'],
+        )
+        node_group.links.new(
+            comb_xyz.outputs['Vector'],
+            line_node.inputs['Offset'],
+        )
+
+        # connect the line node to the group's geometry output
+        group_output_node = node_group.nodes['Group Output']
+        node_group.links.new(
+            line_node.outputs['Mesh'],
+            group_output_node.inputs['Geometry'],
+        )
+        return obj, node_group
 
     def build_flight_path(self, data: BlFlightPathData, context: bpy.types.Context, parent: bpy.types.Object) -> bpy.types.Object:
         obj = self._create_object('CURVE', 'Flight_Path', parent=parent)

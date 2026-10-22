@@ -700,6 +700,8 @@ class FlightProperties(bpy.types.PropertyGroup):
         drone_object: bpy.types.Object
         gimbal_object: bpy.types.Object
         flight_path_object: bpy.types.Object
+        speed_vector_object: bpy.types.Object
+        speed_vector_geo_nodes: bpy.types.GeometryNodeTree
         camera_object: bpy.types.Object
         left_stick: bpy.types.Object
         right_stick: bpy.types.Object
@@ -807,6 +809,16 @@ class FlightProperties(bpy.types.PropertyGroup):
             name="Flight Path Object",
             description="Blender object representing the flight path",
             type=bpy.types.Object,
+        )
+        speed_vector_object: bpy.props.PointerProperty(
+            name="Speed Vector Object",
+            description="Blender object representing the speed vector",
+            type=bpy.types.Object,
+        )
+        speed_vector_geo_nodes: bpy.props.PointerProperty(
+            name="Speed Vector Geometry Nodes",
+            description="Geometry Nodes modifier for the speed vector",
+            type=bpy.types.GeometryNodeTree,
         )
         camera_object: bpy.props.PointerProperty(
             name="Camera Object",
